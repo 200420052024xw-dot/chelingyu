@@ -1,8 +1,7 @@
 import { APP_CONFIG, MAP_DEFAULTS } from "../../config/index";
 import { notificationService } from "../../services/notification";
-import { VEHICLE_PRODUCTS } from "../../content/vehicle-products";
 import { locationAdapter } from "../../adapters/location";
-import { fleetService } from "../../services/fleet";
+import { homeDemoFleet } from "../../services/home-demo-fleet";
 import { reverseGeocodeByWebService } from "../../adapters/tencent-maps";
 import { withPagePerformance } from "../../utils/page-performance";
 
@@ -22,7 +21,6 @@ interface PageData {
     height: number;
     iconPath: string;
   }>;
-  selectedMarkerId: number | null;
   unreadCount: number;
   arrivalMinutes: number;
   locationMode: "gps" | "selected" | "none";
@@ -33,7 +31,6 @@ interface PageData {
   floatActionsOffset: number;
   bottomCardHeight: number;
   supportContactOpen: boolean;
-  product: typeof VEHICLE_PRODUCTS.truck;
 }
 
 let openingOrder = false;
@@ -63,7 +60,6 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
     mapReady: false,
     hasRealLocation: false,
     markers: [],
-    selectedMarkerId: null,
     unreadCount: 0,
     arrivalMinutes: 0,
     locationMode: "none",
@@ -74,18 +70,28 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
     floatActionsOffset: 260,
     bottomCardHeight: 240,
     supportContactOpen: false,
-    product: VEHICLE_PRODUCTS.truck,
   },
 
   onLoad() {
+    this.hasShownHome = false;
     const dimensions = layout();
     this.setData({ ...dimensions, floatActionsOffset: dimensions.bottomCardHeight + 12 });
     const selected = locationAdapter.getHomeSelectedPlace();
-    if (selected) this.applyLocation(selected.point, selected.label, "selected", selected.detail);
-    else this.refreshLocation();
+    if (selected) this.applyLocation(selected.point, selected.label, "selected", selected.detail, true);
+    else {
+      this.refreshDemoFleet(APP_CONFIG.demoCenter, "演示区域");
+      this.refreshLocation();
+    }
   },
 
   onShow() {
+    if (this.hasShownHome) {
+      this.refreshDemoFleet(
+        { latitude: this.data.mapLat, longitude: this.data.mapLng },
+        this.data.locationMode === "none" ? "演示区域" : this.data.regionLabel,
+      );
+    }
+    this.hasShownHome = true;
     this.setData({ unreadCount: notificationService.unreadCount() });
     openingOrder = false;
     this.setData({ openingOrder: false });
@@ -105,16 +111,6 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
     this.setData({ mapReady: false });
   },
 
-  syncFloatingActions() {
-    if (typeof wx.createSelectorQuery !== "function") return;
-    wx.nextTick(() => {
-      const selector = this.data.selectedMarkerId === null ? ".bottom-card" : ".vehicle-drawer.open";
-      wx.createSelectorQuery().in(this).select(selector).boundingClientRect((rect) => {
-        if (rect?.height) this.setData({ floatActionsOffset: Math.ceil(rect.height) + 12 });
-      }).exec();
-    });
-  },
-
   async refreshLocation(recenterMap = false) {
     const requestVersion = ++locationRequestVersion;
     this.setData(this.data.locationMode === "none"
@@ -132,6 +128,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
           || this.data.locationMode !== "gps"
           || this.data.mapLat !== point.latitude
           || this.data.mapLng !== point.longitude) return;
+        homeDemoFleet.setAnchorLabel(place.name);
         this.setData({ regionLabel: place.name, regionSub: place.address === place.name ? "点击选择地点" : place.address });
       }).catch((error) => {
         if (requestVersion !== locationRequestVersion) return;
@@ -148,7 +145,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
       if (requestVersion !== locationRequestVersion) return;
       console.warn("[home] wx.getLocation failed", error);
       if (this.data.locationMode === "none") {
-        this.setData({ hasRealLocation: false, locationLoading: false, regionSub: "定位失败，点击重试", markers: [] });
+        this.setData({ hasRealLocation: false, locationLoading: false, regionSub: "定位失败，点击重试" });
       } else {
         this.setData({ locationLoading: false });
       }
@@ -165,7 +162,6 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
 
   restoreMapView(point: { latitude: number; longitude: number }) {
     this.setData({
-      selectedMarkerId: null,
       mapScale: MAP_DEFAULTS.scale,
       floatActionsOffset: this.data.bottomCardHeight + 12,
     }, () => {
@@ -181,17 +177,24 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
     });
   },
 
-  applyLocation(point: { latitude: number; longitude: number }, label: string, mode: "gps" | "selected", detail = "") {
-    const nearby = fleetService.nearby({ userLocation: point })
-      .filter((v) => v.distanceToUserMeters <= 5000 && v.recommended);
-    const markers = nearby.map((vehicle, index) => ({
-      id: index + 1,
-      latitude: vehicle.location.latitude,
-      longitude: vehicle.location.longitude,
+  refreshDemoFleet(point: { latitude: number; longitude: number }, label: string, randomize = true) {
+    const snapshot = randomize
+      ? homeDemoFleet.regenerate(point, label)
+      : homeDemoFleet.relocate(point, label);
+    const markers = snapshot.vehicles.map((vehicle) => ({
+      id: vehicle.markerId,
+      latitude: vehicle.latitude,
+      longitude: vehicle.longitude,
       width: 52,
       height: 52,
       iconPath: "/assets/vehicles/delivery-pod.png",
     }));
+    this.setData({ markers });
+    return markers;
+  },
+
+  applyLocation(point: { latitude: number; longitude: number }, label: string, mode: "gps" | "selected", detail = "", randomize = false) {
+    const markers = this.refreshDemoFleet(point, mode === "gps" ? "当前定位点" : label, randomize);
     this.setData({
       mapLat: point.latitude,
       mapLng: point.longitude,
@@ -207,16 +210,20 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
 
   onMarkerTap(e: any) {
     const id = Number(e?.detail?.markerId);
-    if (!Number.isInteger(id) || id < 1 || id > this.data.markers.length) return;
-    this.setData({ selectedMarkerId: id }, () => this.syncFloatingActions());
+    const vehicle = homeDemoFleet.getSnapshot()?.vehicles.find((item) => item.markerId === id);
+    if (vehicle) this.openDemoVehicle(vehicle.id);
   },
 
-  onMapTap() {
-    if (this.data.selectedMarkerId !== null) this.setData({ selectedMarkerId: null }, () => this.syncFloatingActions());
+  openDemoVehicle(id: string) {
+    wx.navigateTo({ url: `/packages/delivery/pages/nearby-vehicle/index?id=${encodeURIComponent(id)}` });
   },
 
-  onCloseDrawer() {
-    this.setData({ selectedMarkerId: null }, () => this.syncFloatingActions());
+  onOpenNearbyVehicles() {
+    wx.navigateTo({ url: "/packages/delivery/pages/nearby-fleet/index?mode=vehicles" });
+  },
+
+  onOpenServiceStatus() {
+    wx.navigateTo({ url: "/packages/delivery/pages/nearby-fleet/index?mode=status" });
   },
 
   onPickRegion() {
@@ -255,15 +262,6 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
   onOpenSupportTickets() {
     this.setData({ supportContactOpen: false });
     wx.navigateTo({ url: "/packages/account/pages/support/index" });
-  },
-
-  onViewProduct() {
-    const product = VEHICLE_PRODUCTS.truck;
-    wx.showModal({
-      title: product.name,
-      content: `${product.description}\n自动驾驶 ${product.level}\n最大载重 ${product.maxLoad}\n续航里程 ${product.range}\n最高时速 ${product.topSpeed}`,
-      showCancel: false,
-    });
   },
 
   onStartOrder() {

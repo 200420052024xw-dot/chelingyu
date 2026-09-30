@@ -225,14 +225,6 @@
   padding: 14rpx 28rpx 14rpx;
 }
 
-.sheet-handle {
-  width: 72rpx;
-  height: 7rpx;
-  margin: 0 auto 20rpx;
-  border-radius: 999rpx;
-  background: #d7dedb;
-}
-
 .capacity-row {
   display: flex;
   gap: 16rpx;
@@ -603,13 +595,6 @@
   overflow-y: auto;
 }
 
-.bottom-card .sheet-handle {
-  width: 92rpx;
-  height: 7rpx;
-  flex: 0 0 auto;
-  margin-bottom: 8rpx;
-  background: #d8dfe0;
-}
 .welcome-row {
   display: flex;
   align-items: center;
@@ -806,7 +791,6 @@
 
 @media (max-height: 640px) {
   .bottom-card { padding-top: 12rpx; padding-bottom: 12rpx; }
-  .sheet-handle { margin-bottom: 12rpx; }
   .capacity-row { margin-bottom: 14rpx; }
   .capacity-cell { padding: 14rpx; }
   .capacity-icon-wrap { width: 62rpx; height: 62rpx; margin-right: 8rpx; }

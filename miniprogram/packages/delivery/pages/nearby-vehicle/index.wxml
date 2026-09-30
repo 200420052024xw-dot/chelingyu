@@ -1,0 +1,29 @@
+<view class="detail-page" wx:if="{{found}}">
+  <view class="vehicle-hero">
+    <view class="demo-tag">模拟车辆</view>
+    <image class="hero-image" src="/assets/vehicles/delivery-pod.png" mode="aspectFit"></image>
+    <view class="model-code">{{modelCode}}</view>
+    <view class="model-name">{{modelName}}</view>
+    <view class="model-description">{{description}}</view>
+  </view>
+
+  <view class="detail-card">
+    <view class="section-title">服务与位置</view>
+    <view class="detail-row"><text>车辆状态</text><text class="active-value">{{status}}</text></view>
+    <view class="detail-row"><text>预计可达</text><text>约 {{etaMinutes}} 分钟</text></view>
+    <view class="detail-row"><text>相对位置</text><text>{{locationText}}</text></view>
+    <view class="detail-row"><text>车辆坐标</text><text>{{coordinateText}}</text></view>
+    <map class="vehicle-map" latitude="{{latitude}}" longitude="{{longitude}}" scale="16" markers="{{markers}}" enable-scroll="{{false}}" enable-zoom="{{false}}"></map>
+  </view>
+
+  <view class="detail-card">
+    <view class="section-title">车型参数</view>
+    <view class="detail-row"><text>最大载重</text><text>{{loadText}}</text></view>
+    <view class="detail-row"><text>货厢容积</text><text>{{volumeText}}</text></view>
+    <view class="detail-row"><text>车厢尺寸</text><text>{{sizeText}}</text></view>
+    <view class="detail-row"><text>配送类型</text><text>{{coldText}}</text></view>
+  </view>
+
+  <button class="order-button" bindtap="onStartOrder">我要用车</button>
+</view>
+<view class="missing" wx:else>本次模拟车辆已更新，请返回首页重新查看。</view>

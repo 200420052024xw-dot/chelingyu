@@ -1,0 +1,28 @@
+<view class="fleet-page">
+  <view class="hero">
+    <view class="eyebrow">附近运力 · 模拟展示</view>
+    <view class="hero-title">{{title}}</view>
+    <view class="hero-note">以「{{anchorLabel}}」为中心，展示本次打开首页生成的车辆。</view>
+    <view class="summary">
+      <view class="summary-icon"><image src="/assets/icons/home-status.png" mode="aspectFit"></image></view>
+      <view class="summary-copy">
+        <view class="summary-title">{{mode === 'status' ? '服务正常运营' : '当前可用车辆'}}</view>
+        <view class="summary-detail">{{count}} 辆车辆在附近待命</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-heading">{{mode === 'status' ? '逐车服务状态' : '车型与位置'}}</view>
+  <view class="vehicle-list">
+    <view class="vehicle-card" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" bindtap="onOpenVehicle">
+      <image class="vehicle-image" src="/assets/vehicles/delivery-pod.png" mode="aspectFit"></image>
+      <view class="vehicle-content">
+        <view class="vehicle-title">{{item.modelName}}</view>
+        <view class="vehicle-status">{{item.status}} · 约 {{item.etaMinutes}} 分钟可达</view>
+        <view class="vehicle-location">距服务位置{{item.locationText}}</view>
+        <view class="vehicle-coordinates">{{item.coordinateText}}</view>
+      </view>
+      <view class="vehicle-chevron">›</view>
+    </view>
+  </view>
+</view>

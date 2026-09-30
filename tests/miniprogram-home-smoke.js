@@ -61,6 +61,7 @@ global.wx = {
     }
   },
   showModal(options) { lastModal = options; },
+  setNavigationBarTitle() {},
 };
 global.App = (definition) => { appDefinition = definition; };
 global.Page = (definition) => { pageDefinition = definition; };
@@ -82,6 +83,7 @@ pageDefinition.setData = function setData(patch, callback) {
   if (callback) callback();
 };
 pageDefinition.onLoad.call(pageDefinition);
+const openingVehicleCount = pageDefinition.data.markers.length;
 assert.equal(locationCalls, 1);
 assert.equal(pageDefinition.data.topBarOffset, 28);
 assert.equal(pageDefinition.data.topBarRight, 113);
@@ -107,6 +109,9 @@ const appConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "../miniprogra
 assert.deepEqual(appConfig.preloadRule["pages/home/index"].packages, ["packages/delivery"]);
 assert.ok(appConfig.pages.includes("pages/address-step/index"), "first booking step must be in the main package");
 assert.ok(!appConfig.subpackages.some((pack) => pack.pages.includes("pages/address-step/index")));
+const deliveryPages = appConfig.subpackages.find((pack) => pack.root === "packages/delivery").pages;
+assert.ok(deliveryPages.includes("pages/nearby-fleet/index"));
+assert.ok(deliveryPages.includes("pages/nearby-vehicle/index"));
 
 const markup = fs.readFileSync(path.join(__dirname, "../miniprogram/pages/home/index.wxml"), "utf8");
 assert.ok(markup.includes("<map"));
@@ -119,6 +124,9 @@ assert.ok(!markup.includes('class="region-sub"'));
 assert.ok(markup.includes('style="height: {{bottomCardHeight}}px;"'));
 assert.ok(markup.includes("欢迎使用无人配送服务"));
 assert.ok(markup.includes("/assets/vehicles/delivery-pod.png"));
+assert.ok(markup.includes('bindtap="onOpenNearbyVehicles"'));
+assert.ok(markup.includes('bindtap="onOpenServiceStatus"'));
+assert.ok(!markup.includes("sheet-handle"), "bottom card must not imply it can be dragged");
 const stylesheet = fs.readFileSync(path.join(__dirname, "../miniprogram/pages/home/index.wxss"), "utf8");
 assert.match(stylesheet, /\.capacity-row\s*\{[^}]*flex:\s*1 1 auto;/);
 assert.match(stylesheet, /\.capacity-vehicle\s*\{[^}]*transform:\s*scaleX\(-1\)/);
@@ -133,7 +141,22 @@ setTimeout(async () => {
   assert.equal(pageDefinition.data.regionLabel, "人民广场");
   assert.equal(pageDefinition.data.regionSub, "上海市黄浦区人民大道200号");
   assert.doesNotMatch(pageDefinition.data.regionSub, /\d+\.\d+/);
-  assert.equal(pageDefinition.data.markers.length, 0, "distant demo vehicles must not appear as nearby capacity");
+  const { homeDemoFleet } = require("../miniprogram/services/home-demo-fleet.js");
+  const initialSnapshot = homeDemoFleet.getSnapshot();
+  assert.ok(initialSnapshot.vehicles.length >= 2 && initialSnapshot.vehicles.length <= 6);
+  assert.equal(initialSnapshot.vehicles.length, openingVehicleCount, "GPS lookup keeps this opening's simulated count stable");
+  assert.equal(pageDefinition.data.markers.length, initialSnapshot.vehicles.length);
+  assert.deepEqual(pageDefinition.data.markers.map((item) => item.id), initialSnapshot.vehicles.map((item) => item.markerId));
+  pageDefinition.onOpenNearbyVehicles.call(pageDefinition);
+  assert.equal(lastNavigation, "/packages/delivery/pages/nearby-fleet/index?mode=vehicles");
+  pageDefinition.onOpenServiceStatus.call(pageDefinition);
+  assert.equal(lastNavigation, "/packages/delivery/pages/nearby-fleet/index?mode=status");
+  pageDefinition.onMarkerTap.call(pageDefinition, { detail: { markerId: initialSnapshot.vehicles[0].markerId } });
+  assert.equal(lastNavigation, `/packages/delivery/pages/nearby-vehicle/index?id=${initialSnapshot.vehicles[0].id}`);
+  pageDefinition.onShow.call(pageDefinition);
+  const reopenedSnapshot = homeDemoFleet.getSnapshot();
+  assert.notEqual(reopenedSnapshot.vehicles.length, initialSnapshot.vehicles.length, "each home opening refreshes the visible count");
+  assert.equal(pageDefinition.data.markers.length, reopenedSnapshot.vehicles.length);
   pageDefinition.onPickRegion.call(pageDefinition);
   assert.equal(chooseLocationCalls, 1);
   assert.deepEqual(chooseLocationCenter, { latitude: 31.2304, longitude: 121.4737 });
@@ -156,7 +179,6 @@ setTimeout(async () => {
   console.warn = originalWarn;
   assert.equal(pageDefinition.data.regionLabel, "瑶湖图书馆", "GPS failure keeps the chosen place");
   global.wx.getLocation = ({ success }) => success({ latitude: 31.2304, longitude: 121.4737 });
-  pageDefinition.data.selectedMarkerId = 1;
   pageDefinition.data.mapScale = 20;
   geocodeApiStatus = 121;
   console.warn = () => {};
@@ -164,11 +186,30 @@ setTimeout(async () => {
   await new Promise(setImmediate);
   console.warn = originalWarn;
   assert.equal(pageDefinition.data.locationMode, "gps");
-  assert.equal(pageDefinition.data.selectedMarkerId, null, "locate-me closes the vehicle drawer");
   assert.equal(pageDefinition.data.mapScale, 16, "locate-me restores the default map zoom");
   assert.deepEqual(mapMoves.at(-1), { latitude: 31.2304, longitude: 121.4737 });
   assert.equal(pageDefinition.data.regionLabel, "点击选择地点", "quota errors offer native place selection");
   assert.equal(storage.has("homeSelectedPlaceLabel"), false, "locate-me clears the saved manual selection");
   assert.equal(storage.get("selectedPlaceLabel"), "订单寄件地", "home selection must not erase delivery choices");
-  console.log("[home-smoke] native place selection, saved place, GPS, booking and support contact card");
+  const currentSnapshot = homeDemoFleet.getSnapshot();
+  require("../miniprogram/packages/delivery/pages/nearby-fleet/index.js");
+  const fleetPage = pageDefinition;
+  fleetPage.data = { ...fleetPage.data };
+  fleetPage.setData = function (patch) { Object.assign(this.data, patch); };
+  fleetPage.onLoad.call(fleetPage, { mode: "vehicles" });
+  assert.equal(fleetPage.data.rows.length, currentSnapshot.vehicles.length);
+  assert.ok(fleetPage.data.rows.every((item) => item.coordinateText));
+  fleetPage.onOpenVehicle.call(fleetPage, { currentTarget: { dataset: { id: currentSnapshot.vehicles[0].id } } });
+  assert.equal(lastNavigation, `/packages/delivery/pages/nearby-vehicle/index?id=${currentSnapshot.vehicles[0].id}`);
+  fleetPage.onLoad.call(fleetPage, { mode: "status" });
+  assert.equal(fleetPage.data.title, "服务状态");
+  require("../miniprogram/packages/delivery/pages/nearby-vehicle/index.js");
+  const vehiclePage = pageDefinition;
+  vehiclePage.data = { ...vehiclePage.data };
+  vehiclePage.setData = function (patch) { Object.assign(this.data, patch); };
+  vehiclePage.onLoad.call(vehiclePage, { id: currentSnapshot.vehicles[0].id });
+  assert.equal(vehiclePage.data.found, true);
+  assert.equal(vehiclePage.data.modelName, fleetPage.data.rows[0].modelName);
+  assert.equal(vehiclePage.data.markers[0].latitude, fleetPage.data.rows[0].latitude);
+  console.log("[home-smoke] random fleet count, list and detail routes, map recenter, place selection and support");
 }, 0);

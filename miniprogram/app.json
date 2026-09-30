@@ -15,7 +15,9 @@
         "pages/detail/index",
         "pages/addresses/index",
         "pages/address-edit/index",
-        "pages/place-search/index"
+        "pages/place-search/index",
+        "pages/nearby-fleet/index",
+        "pages/nearby-vehicle/index"
       ]
     },
     {
