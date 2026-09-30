@@ -1,0 +1,118 @@
+.page {
+  background: var(--color-bg);
+  min-height: 100vh;
+  padding-bottom: 60rpx;
+}
+
+.section-title {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+  padding: 24rpx 32rpx 8rpx;
+}
+
+.card {
+  background: #fff;
+  margin: 0 24rpx 16rpx;
+  border-radius: 24rpx;
+  padding: 0 24rpx;
+  box-shadow: var(--shadow-card);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  min-height: 80rpx;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+
+.row.between {
+  justify-content: space-between;
+}
+
+.row-hover {
+  background-color: var(--color-surface-soft);
+}
+
+.row-danger-hover {
+  background-color: rgba(220, 53, 69, 0.08);
+}
+
+.row-label {
+  font-size: var(--font-body);
+  color: var(--color-text-strong);
+}
+
+.row-label.small {
+  font-size: var(--font-caption);
+  color: var(--color-text-subtle);
+}
+
+.row-value {
+  font-size: var(--font-body);
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.row-value.small {
+  font-size: var(--font-caption);
+}
+
+.row.danger .row-label {
+  color: var(--color-danger);
+}
+
+.row-divider {
+  height: 1rpx;
+  background: var(--color-divider);
+}
+
+.switch-row {
+  display: flex;
+  gap: 12rpx;
+  margin-left: auto;
+}
+
+.switch-chip {
+  font-size: var(--font-caption);
+  padding: 12rpx 24rpx;
+  border-radius: 999rpx;
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+}
+
+.switch-chip.active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.link {
+  color: var(--color-primary-deep);
+  font-size: var(--font-caption);
+  font-weight: 600;
+}
+
+.link-card {
+  background: #fff;
+  margin: 16rpx 24rpx 0;
+  border-radius: 24rpx;
+  padding: 0 24rpx;
+  box-shadow: var(--shadow-card);
+}
+
+.link-item {
+  padding: 24rpx 0;
+  font-size: var(--font-body);
+  color: var(--color-text-strong);
+  border-bottom: 1rpx solid var(--color-divider);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+
+.link-item-hover {
+  background-color: var(--color-surface-soft);
+}
+
+.link-item:last-child {
+  border-bottom: none;
+}

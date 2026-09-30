@@ -1,0 +1,130 @@
+.page {
+  background: var(--color-bg);
+  min-height: 100vh;
+  padding: 24rpx;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  padding: 8rpx 8rpx 16rpx;
+}
+
+.title {
+  font-size: var(--font-title-lg);
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.subtitle {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.vehicle-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--motion-fast) var(--ease-out),
+              background-color var(--motion-fast) var(--ease-out);
+}
+
+.vehicle-card:active {
+  transform: scale(0.99);
+  background: var(--color-primary-tint);
+}
+
+.v-head {
+  display: flex;
+  gap: 16rpx;
+}
+
+.v-img {
+  width: 144rpx;
+  height: 144rpx;
+  background: var(--color-surface-soft);
+  border-radius: 16rpx;
+  flex-shrink: 0;
+}
+
+.v-info {
+  flex: 1;
+}
+
+.v-name {
+  font-size: var(--font-body);
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.v-tags {
+  display: flex;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}
+
+.v-loc {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+  margin-top: 8rpx;
+}
+
+.v-loc image {
+  width: 24rpx;
+  height: 24rpx;
+}
+
+.v-meta {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--color-divider);
+}
+
+.v-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.v-cap {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+}
+
+.v-val {
+  font-size: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text-strong);
+  margin-top: 4rpx;
+}
+
+.v-availability {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding-top: 12rpx;
+  margin-top: 12rpx;
+  border-top: 1rpx solid var(--color-divider);
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+}
+
+.v-time {
+  color: var(--color-text);
+  font-weight: 500;
+  flex: 1;
+  text-align: right;
+}

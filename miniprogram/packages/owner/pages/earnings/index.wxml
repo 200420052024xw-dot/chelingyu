@@ -1,0 +1,55 @@
+<wxs module="fmt" src="../../../../utils/format.wxs"></wxs>
+<view class="page">
+  <view class="hero">
+    <view class="hero-title">模拟收益</view>
+    <view class="hero-amount">{{fmt.money(earnings.totalFen)}}</view>
+    <view class="hero-sub">累计收益（含待结算）</view>
+    <view class="hero-row">
+      <view class="hero-cell">
+        <view class="hero-cell-label">待结算</view>
+        <view class="hero-cell-val">{{fmt.money(earnings.pendingFen)}}</view>
+      </view>
+      <view class="hero-cell">
+        <view class="hero-cell-label">已结算</view>
+        <view class="hero-cell-val">{{fmt.money(earnings.settledFen)}}</view>
+      </view>
+    </view>
+    <button class="withdraw-btn" bindtap="onWithdraw" hover-class="withdraw-btn-hover">
+      <image class="withdraw-icon" src="/assets/icons/withdraw.png" mode="aspectFit" />
+      <text>收益说明</text>
+    </button>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{range === 'all' ? 'active' : ''}}" data-range="all" bindtap="onSwitchRange">全部</view>
+    <view class="tab {{range === 'pending' ? 'active' : ''}}" data-range="pending" bindtap="onSwitchRange">待结算</view>
+    <view class="tab {{range === 'settled' ? 'active' : ''}}" data-range="settled" bindtap="onSwitchRange">已结算</view>
+  </view>
+
+  <view class="list">
+    <view class="item press-scale" wx:for="{{filteredItems}}" wx:key="id">
+      <view class="item-head">
+        <view class="item-no">{{item.orderNo}} · {{item.vehicleNo}}</view>
+        <view class="item-amount">{{fmt.money(item.amountFen)}}</view>
+      </view>
+      <view class="item-time">{{fmt.time(item.createdAt)}}</view>
+      <view class="item-status">
+        <view class="dot {{item.status === 'settled' ? 'on' : ''}}"></view>
+        <text>{{item.status === 'settled' ? '已结算' : item.status === 'settling' ? '结算中' : item.status === 'failed' ? '结算失败' : item.status === 'confirmed' ? '已确认' : '待结算'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <empty-state
+    wx:if="{{filteredItems.length === 0 && earnings.items.length === 0}}"
+    image="/assets/images/empty-earnings.png"
+    title="暂无收益记录"
+    desc="完成订单后将产生模拟分润"
+  />
+  <empty-state
+    wx:elif="{{filteredItems.length === 0}}"
+    image="/assets/images/empty-earnings.png"
+    title="此分类下暂无记录"
+    desc="切换其他分类查看"
+  />
+</view>

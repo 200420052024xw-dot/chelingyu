@@ -1,0 +1,60 @@
+<wxs module="fmt" src="../../../../utils/format.wxs"></wxs>
+<view class="page">
+  <view wx:if="{{linkedOrderId}}" class="linked-banner">
+    <view class="linked-icon"><image src="/assets/icons/doc.png" mode="aspectFit"></image></view>
+    <view class="linked-info">
+      <view class="linked-title">已关联订单</view>
+      <view class="linked-sub">{{linkedOrderNo || linkedOrderId}}</view>
+    </view>
+  </view>
+
+  <view class="section-title">提交新工单</view>
+  <view class="card">
+    <view class="form-label">问题类型</view>
+    <view class="type-row">
+      <view
+        class="type-chip {{draftCategory === item.key ? 'active' : ''}} press-scale"
+        wx:for="{{categories}}"
+        wx:key="key"
+        data-key="{{item.key}}"
+        bindtap="onPickDraftCategory"
+        hover-class="type-chip-hover"
+      >
+        <image class="type-icon" src="{{item.icon}}" mode="aspectFit"></image>
+        <text class="type-text">{{item.label}}</text>
+      </view>
+    </view>
+
+    <view class="form-label">问题描述</view>
+    <textarea
+      class="form-textarea"
+      placeholder="请详细描述您遇到的问题"
+      maxlength="500"
+      value="{{draftDescription}}"
+      bindinput="onDraftDescription"
+    ></textarea>
+
+    <view class="form-hint">提交后可在「历史工单」中查看进度</view>
+
+    <view class="submit-btn press-scale" hover-class="submit-btn-hover" bindtap="onSubmit">提交工单</view>
+  </view>
+
+  <view class="section-title">历史工单</view>
+  <view class="ticket-list">
+    <view class="ticket press-scale" hover-class="ticket-hover" wx:for="{{tickets}}" wx:key="id">
+      <view class="ticket-head">
+        <view class="ticket-cat">{{fmt.category(item.category)}}</view>
+        <view class="ticket-status {{item.status === 'closed' ? 'closed' : ''}}">{{fmt.ticketStatus(item.status)}}</view>
+      </view>
+      <view class="ticket-content ellipsis-3">{{item.description}}</view>
+      <view class="ticket-time">工单号 {{item.ticketNo}} · {{fmt.time(item.createdAt)}}</view>
+    </view>
+  </view>
+
+  <empty-state
+    wx:if="{{tickets.length === 0}}"
+    image="/assets/images/empty-support.png"
+    title="暂无工单"
+    desc="提交工单后可在本机查看记录"
+  />
+</view>

@@ -1,0 +1,51 @@
+<wxs module="fmt" src="../../../../utils/format.wxs"></wxs>
+<view class="page page-bottom-action">
+  <view class="header">
+    <view class="title">名下车辆</view>
+    <view class="subtitle">共 {{vehicles.length}} 辆</view>
+  </view>
+
+  <view class="list">
+    <view
+      class="vehicle-card press-scale"
+      wx:for="{{vehicles}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onOpenDetail"
+    >
+      <view class="v-head">
+        <image class="v-img" src="{{item.model.imageUrl}}" mode="aspectFit" />
+        <view class="v-info">
+          <view class="v-name">{{item.model.name}} · {{item.vehicleNo}}</view>
+          <view class="v-tags">
+            <status-badge text="{{item.status === 'available' ? '可用' : item.status}}" tone="{{item.ownerShared ? 'success' : 'warning'}}" />
+            <status-badge text="{{item.ownerShared ? '已共享' : '未共享'}}" tone="{{item.ownerShared ? 'success' : 'neutral'}}" />
+          </view>
+          <view class="v-loc"><image src="/assets/icons/location.png" mode="aspectFit"></image>剩余续航 {{fmt.distance(item.remainingRangeMeters)}}</view>
+        </view>
+      </view>
+      <view class="v-meta">
+        <view class="v-cell">
+          <text class="v-cap">电量</text>
+          <text class="v-val">{{item.batteryPercent}}%</text>
+        </view>
+        <view class="v-cell">
+          <text class="v-cap">续航</text>
+          <text class="v-val">{{item.remainingRangeMeters / 1000}} km</text>
+        </view>
+        <view class="v-cell">
+          <text class="v-cap">最大载重</text>
+          <text class="v-val">{{item.model.maxLoadGrams / 1000}} kg</text>
+        </view>
+      </view>
+      <view class="v-availability">
+        <text class="v-cap">开放时段</text>
+        <text class="v-time">{{fmt.ranges(item.rule ? item.rule.ranges : null)}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-action">
+    <button class="btn-primary" bindtap="onBindNew">+ 绑定车辆</button>
+  </view>
+</view>

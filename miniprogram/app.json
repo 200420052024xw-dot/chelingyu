@@ -1,0 +1,88 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/address-step/index",
+    "pages/orders/index",
+    "pages/profile/index"
+  ],
+  "subpackages": [
+    {
+      "root": "packages/delivery",
+      "pages": [
+        "pages/cargo-step/index",
+        "pages/model-step/index",
+        "pages/confirm/index",
+        "pages/detail/index",
+        "pages/addresses/index",
+        "pages/address-edit/index",
+        "pages/place-search/index"
+      ]
+    },
+    {
+      "root": "packages/owner",
+      "pages": [
+        "pages/vehicles/index",
+        "pages/bind/index",
+        "pages/vehicle-detail/index",
+        "pages/availability/index",
+        "pages/tasks/index",
+        "pages/earnings/index"
+      ]
+    },
+    {
+      "root": "packages/account",
+      "pages": [
+        "pages/messages/index",
+        "pages/support/index",
+        "pages/settings/index"
+      ]
+    }
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "无人车共享运力",
+    "backgroundColor": "#F4F6F8",
+    "enablePullDownRefresh": false
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于在地图上显示您的真实位置和附近车辆"
+    }
+  },
+    "requiredPrivateInfos": ["getLocation", "chooseLocation"],
+  "tabBar": {
+    "color": "#9AA6B2",
+    "selectedColor": "#0E9C5E",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/orders/index",
+        "text": "订单",
+        "iconPath": "assets/tabbar/orders.png",
+        "selectedIconPath": "assets/tabbar/orders-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "preloadRule": {
+    "pages/home/index": {
+      "network": "all",
+      "packages": ["packages/delivery"]
+    }
+  }
+}

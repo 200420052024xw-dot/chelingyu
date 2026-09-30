@@ -1,0 +1,19 @@
+{
+  "scripts": {
+    "build:miniprogram": "node scripts/generate-mock-module.js && tsc -p miniprogram/tsconfig.json && node scripts/generate-runtime-env.js",
+    "test:home": "node tests/miniprogram-home-smoke.js",
+    "test": "node tests/miniprogram-module-resolution.test.js && node tests/booking-flow.test.js && ts-node --project tsconfig.test.json tests/order-state.test.ts && ts-node --project tsconfig.test.json tests/pricing.test.ts && ts-node --project tsconfig.test.json tests/revenue.test.ts",
+    "test:modules": "node tests/miniprogram-module-resolution.test.js",
+    "test:order": "ts-node --project tsconfig.test.json tests/order-state.test.ts",
+    "test:pricing": "ts-node --project tsconfig.test.json tests/pricing.test.ts",
+    "test:revenue": "ts-node --project tsconfig.test.json tests/revenue.test.ts",
+    "typecheck": "tsc --noEmit -p miniprogram/tsconfig.json"
+  },
+  "dependencies": {
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^5.2.3",
+    "typescript": "^5.9.3"
+  }
+}

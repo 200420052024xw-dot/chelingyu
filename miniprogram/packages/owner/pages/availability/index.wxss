@@ -1,0 +1,154 @@
+.page {
+  background: var(--color-bg);
+  min-height: 100vh;
+  padding: 24rpx;
+}
+
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: var(--shadow-card);
+}
+
+.row-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.row-info {
+  flex: 1;
+}
+
+.row-title {
+  font-size: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.row-desc {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+  margin-top: 4rpx;
+}
+
+.toggle {
+  position: relative;
+  width: 88rpx;
+  height: 48rpx;
+  background: #D8DEE5;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.toggle.on {
+  background: var(--color-primary);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+  box-shadow: 0 2rpx 4rpx rgba(0,0,0,0.1);
+}
+
+.toggle.on .toggle-thumb {
+  transform: translateX(40rpx);
+}
+
+.section-title {
+  font-size: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text-strong);
+  margin-bottom: 16rpx;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8rpx;
+  margin-bottom: 24rpx;
+}
+
+.weekday {
+  text-align: center;
+  padding: 16rpx 0;
+  background: var(--color-surface-soft);
+  border-radius: 12rpx;
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+  border: 2rpx solid transparent;
+}
+
+.weekday.active {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-deep);
+  font-weight: 600;
+}
+
+.time-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.time-cell {
+  flex: 1;
+}
+
+.picker-cell {
+  background: var(--color-surface-soft);
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.picker-label {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+}
+
+.picker-value {
+  font-size: var(--font-body);
+  color: var(--color-text-strong);
+  font-weight: 600;
+}
+
+.time-arrow {
+  font-size: var(--font-body);
+  color: var(--color-text-muted);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--font-caption);
+  margin-top: 12rpx;
+}
+
+.tip {
+  display: flex;
+  gap: 12rpx;
+  align-items: flex-start;
+  background: var(--color-primary-tint);
+}
+
+.tip-icon {
+  font-size: 28rpx;
+}
+
+.tip-text {
+  flex: 1;
+  font-size: var(--font-caption);
+  color: var(--color-text);
+  line-height: 1.6;
+}

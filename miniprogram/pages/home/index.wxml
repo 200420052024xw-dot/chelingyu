@@ -1,0 +1,127 @@
+<view class="page-home">
+  <view wx:if="{{locationMode === 'none'}}" class="map-placeholder">
+    <view class="placeholder-mark">⌖</view>
+    <view class="placeholder-title">{{locationLoading ? '正在获取您的位置' : '先选择您的服务位置'}}</view>
+    <view class="placeholder-note">{{locationLoading ? '请允许微信使用定位，也可以稍后手动搜索地点' : '定位或搜索地点后，才会显示附近演示运力'}}</view>
+    <view class="placeholder-action" bindtap="onPickRegion">在微信地图选点</view>
+  </view>
+  <map
+    wx:else
+    id="map"
+    class="map"
+    latitude="{{mapLat}}"
+    longitude="{{mapLng}}"
+    scale="{{mapScale}}"
+    markers="{{markers}}"
+    show-location="{{hasRealLocation}}"
+    enable-zoom="{{true}}"
+    enable-scroll="{{true}}"
+    bindmarkertap="onMarkerTap"
+    bindtap="onMapTap"
+    bindupdated="onMapUpdated"
+    binderror="onMapError"
+  ></map>
+
+  <view class="top-bar" style="top: {{topBarOffset}}px; right: {{topBarRight}}px;">
+    <view class="region" bindtap="onPickRegion">
+      <view class="region-pin"><image class="region-pin-icon" src="/assets/icons/home-pin.png"></image></view>
+      <view class="region-info">
+        <view class="region-title">{{regionLabel}}</view>
+      </view>
+      <view class="region-chevron"></view>
+    </view>
+    <view class="message-button" bindtap="onOpenMessages">
+      <image class="message-icon" src="/assets/icons/home-message.png"></image>
+      <view class="msg-dot" wx:if="{{unreadCount > 0}}"></view>
+    </view>
+  </view>
+
+  <view class="float-actions" style="bottom: {{floatActionsOffset}}px;">
+    <view class="float-btn" bindtap="onLocateMe">
+      <image class="float-icon" src="/assets/icons/home-locate.png"></image>
+      <view class="float-label">定位</view>
+    </view>
+    <view class="float-btn" bindtap="onCallSupport">
+      <image class="float-icon" src="/assets/icons/home-support.png"></image>
+      <view class="float-label">客服</view>
+    </view>
+  </view>
+</view>
+
+<view class="page-home-overlays">
+  <view class="bottom-card" style="height: {{bottomCardHeight}}px;" wx:if="{{selectedMarkerId === null}}">
+    <view class="sheet-handle"></view>
+    <view class="welcome-row">
+      <view class="welcome-icon"><image src="/assets/icons/home-capacity.png" mode="aspectFit"></image></view>
+      <view class="welcome-copy">
+        <view class="welcome-title">欢迎使用无人配送服务</view>
+        <view class="welcome-sub">绿色智能 · 安全高效 · 触手可及</view>
+      </view>
+    </view>
+    <view class="capacity-row">
+      <view class="capacity-cell" bindtap="onStartOrder">
+        <image src="/assets/vehicles/delivery-pod.png" mode="aspectFit" class="capacity-vehicle"></image>
+        <view class="capacity-info">
+          <view class="capacity-label">附近可用车辆</view>
+          <view class="capacity-value" wx:if="{{locationMode !== 'none'}}">{{markers.length}}<text class="capacity-unit"> 辆</text></view>
+          <view class="capacity-value pending" wx:else>定位后查看</view>
+        </view>
+        <view class="capacity-next">›</view>
+      </view>
+      <view class="capacity-cell" bindtap="onStartOrder">
+        <view class="capacity-icon-wrap"><image src="/assets/icons/home-status.png" mode="aspectFit" class="capacity-icon"></image></view>
+        <view class="capacity-info">
+          <view class="capacity-label">服务状态</view>
+          <view class="capacity-value status-value">{{locationMode === 'none' ? '待设置位置' : '正常运营'}}</view>
+          <view class="capacity-detail">{{locationMode === 'none' ? '请选择服务位置' : '可申请总部调车'}}</view>
+        </view>
+        <view class="capacity-next">›</view>
+      </view>
+    </view>
+    <button class="use-btn" bindtap="onStartOrder" loading="{{openingOrder}}" disabled="{{openingOrder}}" hover-class="button-pressed">
+      <image class="use-icon" src="/assets/icons/home-capacity-white.png" mode="aspectFit"></image><text>{{openingOrder ? '正在进入' : '我要用车'}}</text><text class="use-arrow">→</text>
+    </button>
+    <view class="brand-row">
+      <view class="brand-line"></view>
+      <text class="brand-text">配送 / 跑腿 / 无人配送</text>
+      <view class="brand-line"></view>
+    </view>
+  </view>
+
+  <view class="vehicle-drawer-mask" wx:if="{{selectedMarkerId !== null}}" bindtap="onCloseDrawer"></view>
+  <view class="vehicle-drawer {{selectedMarkerId !== null ? 'open' : ''}}">
+    <view wx:if="{{selectedMarkerId !== null}}" class="vehicle-card">
+      <view class="sheet-handle"></view>
+      <view class="vehicle-summary">
+        <view class="vehicle-visual"><image class="vehicle-image" src="/assets/vehicles/autonomous-truck.png" mode="aspectFit"></image></view>
+        <view class="vehicle-head-info">
+          <view class="vehicle-title"><text class="vehicle-name">{{product.name}}</text></view>
+          <view class="vehicle-sub">{{product.description}}</view>
+          <view class="vehicle-metrics">
+            <view class="metric"><text>自动驾驶 {{product.level}}</text></view>
+            <view class="metric"><text>载重 {{product.maxLoad}}</text></view>
+            <view class="metric"><text>续航 {{product.range}}</text></view>
+            <view class="metric"><text>时速 {{product.topSpeed}}</text></view>
+          </view>
+        </view>
+      </view>
+      <view class="vehicle-actions">
+        <button class="drawer-btn secondary" bindtap="onViewProduct">查看产品</button>
+        <button class="drawer-btn primary" bindtap="onStartOrder" loading="{{openingOrder}}" disabled="{{openingOrder}}">{{openingOrder ? '正在进入' : '我要用车'}}</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="support-contact-mask" wx:if="{{supportContactOpen}}" bindtap="onCloseSupportContact"></view>
+  <view class="support-contact-card" wx:if="{{supportContactOpen}}">
+    <view class="contact-eyebrow">客服联系方式 · 演示</view>
+    <view class="contact-title">需要帮助？</view>
+    <view class="contact-note">以下联系方式仅用于界面演示，您也可以提交工单。</view>
+    <view class="contact-detail"><text>联系电话</text><text class="contact-value">400-000-0000</text></view>
+    <view class="contact-detail"><text>电子邮箱</text><text class="contact-value">support@example.com</text></view>
+    <view class="contact-actions">
+      <view class="contact-dismiss" bindtap="onCloseSupportContact">关闭</view>
+      <view class="contact-ticket" bindtap="onOpenSupportTickets">提交工单</view>
+    </view>
+  </view>
+</view>

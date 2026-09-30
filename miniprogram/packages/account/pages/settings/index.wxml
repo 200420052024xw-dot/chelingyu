@@ -1,0 +1,86 @@
+<view class="page">
+  <view class="section-title">身份</view>
+  <view class="card">
+    <view class="row">
+      <view class="row-label">当前身份</view>
+      <view class="row-value">{{identityLabel}}</view>
+    </view>
+    <view class="row-divider"></view>
+    <view class="row">
+      <view class="row-label">切换为</view>
+      <view class="switch-row">
+        <view
+          class="switch-chip {{identity === 'customer' ? 'active' : ''}}"
+          data-key="customer"
+          bindtap="onSwitchIdentity"
+        >下单用户</view>
+        <view
+          class="switch-chip {{identity === 'vehicle_owner' ? 'active' : ''}}"
+          data-key="vehicle_owner"
+          bindtap="onSwitchIdentity"
+        >车主</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-title">通知</view>
+  <view class="card">
+    <view class="row between press-scale" hover-class="row-hover">
+      <view class="row-label">订单状态通知</view>
+      <switch data-key="order" checked="{{notifOrder}}" bindchange="onToggleNotif" color="#0FB96D" />
+    </view>
+    <view class="row-divider"></view>
+    <view class="row between press-scale" hover-class="row-hover">
+      <view class="row-label">系统消息通知</view>
+      <switch data-key="system" checked="{{notifSystem}}" bindchange="onToggleNotif" color="#0FB96D" />
+    </view>
+  </view>
+
+  <view class="section-title">模拟时间</view>
+  <view class="card">
+    <view class="row">
+      <view class="row-label">时钟覆盖</view>
+      <view class="row-value small">{{clockOverride || '系统时间'}}</view>
+    </view>
+    <view class="row-divider"></view>
+    <view class="row between press-scale" hover-class="row-hover">
+      <view class="row-label">推进 30 分钟</view>
+      <view class="link" bindtap="onAdvanceClock">推进</view>
+    </view>
+    <view class="row-divider"></view>
+    <view class="row between press-scale" hover-class="row-hover">
+      <view class="row-label">恢复系统时间</view>
+      <view class="link" bindtap="onResetClock">重置</view>
+    </view>
+  </view>
+
+  <view class="section-title">数据</view>
+  <view class="card">
+    <view class="row between danger press-scale" hover-class="row-danger-hover">
+      <view class="row-label">重置本地数据</view>
+      <view class="link" bindtap="onResetData">重置</view>
+    </view>
+  </view>
+
+  <view class="section-title">关于</view>
+  <view class="card">
+    <view class="row between">
+      <view class="row-label">应用名称</view>
+      <view class="row-value small">{{appName}}</view>
+    </view>
+    <view class="row-divider"></view>
+    <view class="row between">
+      <view class="row-label">版本</view>
+      <view class="row-value small">v{{appVersion}}</view>
+    </view>
+    <view class="row-divider"></view>
+    <view class="row">
+      <view class="row-label small">{{buildInfo}}</view>
+    </view>
+  </view>
+
+  <view class="link-card">
+    <view class="link-item press-scale" hover-class="link-item-hover" bindtap="onOpenAgreement">服务协议</view>
+    <view class="link-item press-scale" hover-class="link-item-hover" bindtap="onOpenPrivacy">隐私政策</view>
+  </view>
+</view>

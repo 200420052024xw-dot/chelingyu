@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "车辆收益",
+  "navigationBarBackgroundColor": "#FFFFFF",
+  "navigationBarTextStyle": "black",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/index"
+  }
+}

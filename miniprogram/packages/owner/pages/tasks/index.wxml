@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="tabs">
+    <view
+      class="tab {{range === item.key ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="onSwitchRange"
+    >{{item.label}}</view>
+  </view>
+
+  <view class="list" wx:if="{{filteredTasks.length > 0}}">
+    <view
+      class="task-card press-scale"
+      wx:for="{{filteredTasks}}"
+      wx:key="orderId"
+      data-id="{{item.orderId}}"
+      bindtap="onOpenDetail"
+    >
+      <view class="task-head">
+        <view class="task-no">{{item.orderNo}} · {{item.vehicleNo}}</view>
+        <status-badge text="{{item.statusBadge.text}}" tone="{{item.statusBadge.tone}}" />
+      </view>
+      <view class="task-route">
+        <view class="route-row">
+          <view class="route-dot dot-pickup"></view>
+          <view class="route-name ellipsis">{{item.pickup.name}}</view>
+        </view>
+        <view class="route-line"></view>
+        <view class="route-row">
+          <view class="route-dot dot-dropoff"></view>
+          <view class="route-name ellipsis">{{item.dropoff.name}}</view>
+        </view>
+      </view>
+      <view class="task-time" wx:if="{{item.estimatedPickupAt}}">
+        <text>预计取件 {{item.estimatedPickupAt}}</text>
+        <text wx:if="{{item.estimatedDeliveryAt}}">· 预计送达 {{item.estimatedDeliveryAt}}</text>
+      </view>
+    </view>
+  </view>
+
+  <empty-state
+    wx:elif="{{range === 'active'}}"
+    image="/assets/images/empty-tasks.png"
+    title="暂无进行中任务"
+    desc="车辆空闲时，可以编辑可用时段以提升接单率"
+  />
+  <empty-state
+    wx:elif="{{range === 'completed'}}"
+    image="/assets/images/empty-tasks.png"
+    title="暂无已完成任务"
+    desc="订单完成后会自动汇总到收益页"
+  />
+  <empty-state
+    wx:else
+    image="/assets/images/empty-tasks.png"
+    title="暂无任务"
+    desc="绑定车辆后会自动接单"
+  />
+</view>

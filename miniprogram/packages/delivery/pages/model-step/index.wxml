@@ -1,0 +1,122 @@
+<wxs module="fmt" src="../../../../utils/format.wxs"></wxs>
+<view class="page page-bottom-action">
+  <view class="stepper">
+    <view class="step done">
+      <view class="step-num done">✓</view>
+      <text class="step-label done">填写地址</text>
+    </view>
+    <view class="step-line done"></view>
+    <view class="step done">
+      <view class="step-num done">✓</view>
+      <text class="step-label done">物品信息</text>
+    </view>
+    <view class="step-line done"></view>
+    <view class="step active">
+      <view class="step-num active">3</view>
+      <text class="step-label active">选择车型</text>
+    </view>
+  </view>
+
+  <view class="tip">
+    <text class="tip-icon">✓</text>
+    <text>按货物参数匹配车型；附近无车时可申请总部调车</text>
+  </view>
+
+  <view class="tabs">
+    <view
+      class="tab {{activeTab === 'recommended' ? 'active' : ''}}"
+      data-tab="recommended"
+      bindtap="onTabChange"
+    >推荐</view>
+    <view
+      class="tab {{activeTab === 'nearest' ? 'active' : ''}}"
+      data-tab="nearest"
+      bindtap="onTabChange"
+    >最近</view>
+    <view
+      class="tab {{activeTab === 'all' ? 'active' : ''}}"
+      data-tab="all"
+      bindtap="onTabChange"
+    >全部</view>
+  </view>
+
+  <view class="sub-tip">
+    <text class="dot"></text>
+    <text>附近车辆数量仅作演示参考；总部调车需先确认运力，再进入支付</text>
+  </view>
+
+  <view class="model-list">
+    <view
+      class="model-card press-scale {{selectedModelId === item.modelId ? 'selected' : ''}} {{!item.available ? 'disabled' : ''}}"
+      hover-class="model-card-hover"
+      wx:for="{{visibleOffers}}"
+      wx:key="modelId"
+      data-id="{{item.modelId}}"
+      bindtap="onSelect"
+    >
+      <view class="best-tag" wx:if="{{item.recommended}}">最推荐</view>
+      <view class="model-head">
+        <image class="model-image" src="{{item.modelImage}}" mode="aspectFit" />
+        <view class="model-info">
+          <view class="model-name">{{item.modelName}}</view>
+          <view class="model-tags">
+            <view class="tag" wx:for="{{item.tags}}" wx:for-item="t" wx:key="*this">{{t}}</view>
+          </view>
+          <view class="model-meta">
+            <view class="meta-item">
+              <image class="meta-icon" src="/assets/icons/weight.png" mode="aspectFit" />
+              <text class="meta-num">{{item.maxLoadGrams / 1000}} kg</text>
+              <text class="meta-cap">最大载重</text>
+            </view>
+            <view class="meta-item">
+              <image class="meta-icon" src="/assets/icons/box.png" mode="aspectFit" />
+              <text class="meta-num">{{fmt.volume(item.cargoVolumeLiters)}}</text>
+              <text class="meta-cap">货箱容积</text>
+            </view>
+          </view>
+        </view>
+        <view class="model-radio {{selectedModelId === item.modelId ? 'on' : ''}}"></view>
+      </view>
+
+      <view class="model-footer">
+        <view class="supply-label {{item.supplySource === 'headquarters' ? 'hq' : ''}}">{{item.supplySource === 'headquarters' ? '总部调车 · 需确认运力' : '附近演示运力'}}</view>
+        <view class="footer-item">
+          <image class="footer-icon" src="/assets/icons/location.png" mode="aspectFit" />
+          <text>{{item.supplySource === 'headquarters' ? '当地暂无共享车辆' : '距离 ' + fmt.distance(item.distanceMeters)}}</text>
+        </view>
+        <view class="footer-item">
+          <image class="footer-icon" src="/assets/icons/clock.png" mode="aspectFit"></image>
+          <text>{{item.supplySource === 'headquarters' ? '确认后提供预计时间' : '约 ' + item.estimatedArrivalMinutes + ' 分钟到达'}}</text>
+        </view>
+        <view class="footer-item battery" wx:if="{{item.supplySource === 'nearby'}}">
+          <view class="battery-icon">
+            <view class="battery-body">
+              <view class="battery-fill" style="width: {{item.batteryPercent || 0}}%;"></view>
+            </view>
+            <view class="battery-cap"></view>
+          </view>
+          <text>{{item.supplySource === 'headquarters' ? '下单前确认运力' : '电量 ' + (item.batteryPercent || 0) + '%'}}</text>
+        </view>
+        <view class="footer-item" wx:else>运力确认后提供车辆与到达信息</view>
+      </view>
+
+      <view class="model-disabled" wx:if="{{!item.available}}">
+        <text wx:for="{{item.unavailableReasons}}" wx:key="*this" wx:for-item="r" class="disabled-reason">· {{r}}</text>
+      </view>
+    </view>
+  </view>
+
+  <empty-state wx:if="{{visibleOffers.length === 0}}" image="/assets/images/empty-vehicles.png" title="暂未找到适配车型" desc="可修改货物重量或尺寸，或联系人工评估" />
+
+  <view class="selected-bar" wx:if="{{selected && selected.available}}">
+    <view class="bar-thumb">
+      <image class="bar-image" src="{{selected.modelImage}}" mode="aspectFit" />
+    </view>
+    <view class="bar-info">
+      <view class="bar-line">已选择：{{selected.modelName}}</view>
+      <view class="bar-eta" wx:if="{{selected.supplySource === 'headquarters'}}">提交后先确认总部运力，再支付</view>
+      <view class="bar-eta" wx:else>预计 <text class="text-primary">{{selected.estimatedArrivalMinutes}}</text> 分钟到达</view>
+    </view>
+    <button class="btn-primary bar-btn" bindtap="onConfirm">确认下单</button>
+  </view>
+</view>

@@ -1,0 +1,120 @@
+<view class="page page-bottom-action">
+  <view class="map-wrap" wx:if="{{locationChosen}}">
+    <map
+      id="edit-map"
+      class="map"
+      latitude="{{demoCenter.latitude}}"
+      longitude="{{demoCenter.longitude}}"
+      show-location="{{hasRealLocation}}"
+      scale="16"
+      bindregionchange="onMapRegionChange"
+    ></map>
+    <view class="map-center-pin"></view>
+  </view>
+  <view class="map-empty" wx:else bindtap="onChoosePlace">尚未选择地点 · 点击搜索或在地图上选点</view>
+
+  <view class="form">
+    <view class="quick-pick">
+      <view class="quick-title">取送地点</view>
+      <view class="quick-row">
+        <view class="quick-item" bindtap="onChoosePlace">{{locationChosen ? '更改地图地点' : '搜索或地图选点'}}</view>
+        <view class="quick-item" bindtap="onPickCurrent">使用当前位置</view>
+      </view>
+    </view>
+
+    <view class="input-cell">
+      <text class="label">地址名称</text>
+      <input
+        placeholder="如：公司、家、学校"
+        placeholder-class="ph"
+        value="{{name}}"
+        data-field="name"
+        bindinput="onInput"
+      />
+    </view>
+
+    <view class="form-row">
+      <view class="input-cell flex-1">
+        <text class="label">联系人</text>
+        <input
+          placeholder="姓名"
+          placeholder-class="ph"
+          value="{{contactName}}"
+          data-field="contactName"
+          bindinput="onInput"
+        />
+      </view>
+      <view class="input-cell flex-1">
+        <text class="label">联系电话</text>
+        <input
+          placeholder="手机号"
+          placeholder-class="ph"
+          value="{{contactMobile}}"
+          data-field="contactMobile"
+          bindinput="onInput"
+        />
+      </view>
+    </view>
+
+    <view class="input-cell">
+      <text class="label">详细地址</text>
+      <textarea
+        placeholder="街道、门牌号"
+        placeholder-class="ph"
+        value="{{detail}}"
+        data-field="detail"
+        bindinput="onInput"
+        auto-height
+      />
+    </view>
+
+    <view class="label-section">
+      <text class="label-section-title">地址标签</text>
+    </view>
+    <view class="tag-row">
+      <view
+        class="tag-item {{label === 'home' ? 'active' : ''}}"
+        data-label="home"
+        bindtap="onLabelChange"
+      >家</view>
+      <view
+        class="tag-item {{label === 'company' ? 'active' : ''}}"
+        data-label="company"
+        bindtap="onLabelChange"
+      >公司</view>
+      <view
+        class="tag-item {{label === 'school' ? 'active' : ''}}"
+        data-label="school"
+        bindtap="onLabelChange"
+      >学校</view>
+      <view
+        class="tag-item {{label === 'other' ? 'active' : ''}}"
+        data-label="other"
+        bindtap="onLabelChange"
+      >其他</view>
+    </view>
+
+    <view class="toggle-row">
+      <view class="toggle-cell" bindtap="onToggleSender">
+        <view class="toggle-label">设为默认寄件</view>
+        <view class="toggle {{isDefaultSender ? 'on' : ''}}">
+          <view class="toggle-thumb"></view>
+        </view>
+      </view>
+      <view class="toggle-cell" bindtap="onToggleReceiver">
+        <view class="toggle-label">设为默认收件</view>
+        <view class="toggle {{isDefaultReceiver ? 'on' : ''}}">
+          <view class="toggle-thumb"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="delete-row" wx:if="{{id}}" bindtap="onDelete">
+      <text class="delete-text">删除该地址</text>
+    </view>
+  </view>
+
+  <view class="bottom-action">
+    <button class="btn-primary" bindtap="onSave">保存</button>
+  </view>
+</view>

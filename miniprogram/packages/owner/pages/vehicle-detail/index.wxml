@@ -1,0 +1,83 @@
+<wxs module="fmt" src="../../../../utils/format.wxs"></wxs>
+<view class="page" wx:if="{{vehicle}}">
+  <view class="hero">
+    <image class="hero-img" src="{{model.imageUrl}}" mode="aspectFit" />
+    <view class="hero-info">
+      <view class="hero-name">{{model.name}}</view>
+      <view class="hero-no">车牌 {{vehicle.vehicleNo}}</view>
+      <view class="hero-tags">
+        <status-badge text="{{vehicle.ownerShared ? '已共享给平台' : '未共享'}}" tone="{{vehicle.ownerShared ? 'success' : 'neutral'}}" />
+        <status-badge text="{{vehicle.status === 'available' ? '可用' : vehicle.status}}" tone="{{vehicle.status === 'available' ? 'success' : 'info'}}" />
+      </view>
+    </view>
+  </view>
+
+  <view class="quick-actions">
+    <view class="quick-btn press-scale" bindtap="onOpenTasks">
+      <image class="quick-icon" src="/assets/icons/vehicle.png" mode="aspectFit" />
+      <text class="quick-label">查看分配任务</text>
+      <text class="quick-arrow">›</text>
+    </view>
+    <view class="quick-btn press-scale" bindtap="onEditAvailability">
+      <image class="quick-icon" src="/assets/icons/clock.png" mode="aspectFit" />
+      <text class="quick-label">编辑可用时段</text>
+      <text class="quick-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="grid">
+      <view class="g-cell">
+        <text class="g-cap">电量</text>
+        <text class="g-val">{{vehicle.batteryPercent}}%</text>
+      </view>
+      <view class="g-cell">
+        <text class="g-cap">续航</text>
+        <text class="g-val">{{vehicle.remainingRangeMeters / 1000}} km</text>
+      </view>
+      <view class="g-cell">
+        <text class="g-cap">载重</text>
+        <text class="g-val">{{model.maxLoadGrams / 1000}} kg</text>
+      </view>
+      <view class="g-cell">
+        <text class="g-cap">容积</text>
+        <text class="g-val">{{fmt.volume(model.cargoVolumeLiters)}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">位置</view>
+    <view class="loc-row">
+      <view class="loc-primary"><image src="/assets/icons/location.png" mode="aspectFit"></image><text>距您 {{distanceText}}</text></view>
+      <text class="text-muted">坐标 {{fmt.coordinate(vehicle.location.latitude)}}, {{fmt.coordinate(vehicle.location.longitude)}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">开放运营时段</view>
+    <view class="time-line">{{fmt.ranges(rule ? rule.ranges : null)}}</view>
+    <view class="row-action" bindtap="onEditAvailability">
+      <text>编辑开放时段 / 共享开关</text>
+      <text class="row-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">当前任务</view>
+    <view wx:if="{{tasks.length === 0}}" class="empty-text">暂无进行中的任务</view>
+    <view wx:else>
+      <view class="task-row" wx:for="{{tasks}}" wx:key="orderId">
+        <view class="task-info">
+          <view class="task-no">{{item.orderNo}}</view>
+          <view class="task-route">{{item.pickup.name}} → {{item.dropoff.name}}</view>
+        </view>
+        <status-badge text="{{item.statusBadge.text}}" tone="{{item.statusBadge.tone}}" />
+      </view>
+    </view>
+    <view class="row-action" bindtap="onOpenTasks">
+      <text>查看全部任务</text>
+      <text class="row-arrow">›</text>
+    </view>
+  </view>
+</view>

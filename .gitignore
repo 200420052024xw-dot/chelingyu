@@ -1,0 +1,39 @@
+# ===================== Dependencies =====================
+node_modules/
+package-lock.json
+
+# ===================== Build output =====================
+miniprogram/miniprogram_npm/
+dist/
+build/
+
+# ===================== Local secrets (NEVER commit) =====================
+# 真实腾讯地图 WebService Key 等敏感配置
+miniprogram/config/env.local.ts
+miniprogram/config/env.generated.js
+miniprogram/.env
+miniprogram/.env.local
+.env
+.env.*
+!.env.example
+
+# ===================== IDE / Editor =====================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===================== WeChat DevTools =====================
+# 工具自动写入，不应该入库
+project.private.config.json
+
+# ===================== Logs / Tests =====================
+*.log
+coverage/
+.nyc_output/
+
+# ===================== Local prototype data =====================
+# 本地原型数据快照（reset 演示数据会清空）
+miniprogram/fixtures/local-snapshot.json

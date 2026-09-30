@@ -1,0 +1,100 @@
+<wxs module="fmt" src="../../utils/format.wxs"></wxs>
+<view class="page">
+  <!-- 用户信息 -->
+  <view class="user-card">
+    <view class="user-info">
+      <view class="avatar">{{authenticated ? nickname[0] : '·'}}</view>
+      <view class="info">
+        <view class="nick">{{nickname}}</view>
+        <view class="role">{{authenticated ? (identity === 'customer' ? '普通用户' : '车主') : '本机用户数据加载中'}}</view>
+      </view>
+    </view>
+    <view class="identity-switch" wx:if="{{authenticated}}">
+      <view class="identity-btn {{identity === 'customer' ? 'active' : ''}} press-scale" hover-class="identity-btn-hover" data-id="customer" bindtap="onSwitchIdentity">用户</view>
+      <view class="identity-btn {{identity === 'vehicle_owner' ? 'active' : ''}} press-scale" hover-class="identity-btn-hover" data-id="vehicle_owner" bindtap="onSwitchIdentity">车主</view>
+    </view>
+  </view>
+
+  <!-- 订单统计 -->
+  <view class="stats-card" wx:if="{{authenticated}}">
+    <view class="stat-cell press-scale" hover-class="stat-cell-hover" bindtap="onOpenOrders">
+      <view class="stat-num">{{activeOrderCount}}</view>
+      <view class="stat-label">进行中</view>
+    </view>
+    <view class="stat-cell press-scale" hover-class="stat-cell-hover" bindtap="onOpenOrders">
+      <view class="stat-num">{{completedOrderCount}}</view>
+      <view class="stat-label">已完成</view>
+    </view>
+    <view class="stat-cell press-scale" hover-class="stat-cell-hover" bindtap="onOpenEarnings">
+      <view class="stat-num money">{{fmt.money(settledEarningsFen)}}</view>
+      <view class="stat-label">已结算</view>
+    </view>
+    <view class="stat-cell press-scale" hover-class="stat-cell-hover" bindtap="onOpenEarnings">
+      <view class="stat-num money">{{fmt.money(pendingEarningsFen)}}</view>
+      <view class="stat-label">待结算</view>
+    </view>
+  </view>
+
+  <!-- 常用地址 -->
+  <view class="menu-card" wx:if="{{authenticated}}">
+    <view class="menu-row press-scale" hover-class="menu-row-hover" bindtap="onOpenAddresses">
+      <image class="menu-icon" src="/assets/icons/location.png" mode="aspectFit" />
+      <view class="menu-info">
+        <view class="menu-title">常用地址</view>
+        <view class="menu-desc ellipsis">{{defaultSender || '未设置'}} → {{defaultReceiver || '未设置'}}</view>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 车主入口 -->
+  <view class="menu-card" wx:if="{{authenticated}}">
+    <view class="menu-row press-scale" hover-class="menu-row-hover" bindtap="onOpenVehicles">
+      <image class="menu-icon" src="/assets/icons/vehicle.png" mode="aspectFit" />
+      <view class="menu-info">
+        <view class="menu-title">我的车辆</view>
+        <view class="menu-desc">已绑定 {{vehicleCount}} 辆 · 查看详情</view>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-row press-scale" hover-class="menu-row-hover" bindtap="onOpenEarnings">
+      <image class="menu-icon" src="/assets/icons/money.png" mode="aspectFit" />
+      <view class="menu-info">
+        <view class="menu-title">车辆收益</view>
+        <view class="menu-desc">查看收益与结算明细</view>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 服务 -->
+  <view class="menu-card" wx:if="{{authenticated}}">
+    <view class="menu-row press-scale" hover-class="menu-row-hover" bindtap="onOpenMessages">
+      <image class="menu-icon" src="/assets/icons/message.png" mode="aspectFit" />
+      <view class="menu-info">
+        <view class="menu-title">消息中心</view>
+      </view>
+      <view class="badge tone-danger" wx:if="{{unreadCount > 0}}">{{unreadCount}}</view>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-row press-scale" hover-class="menu-row-hover" bindtap="onOpenSupport">
+      <image class="menu-icon" src="/assets/icons/support.png" mode="aspectFit" />
+      <view class="menu-info">
+        <view class="menu-title">客服中心</view>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-row press-scale" hover-class="menu-row-hover" bindtap="onOpenSettings">
+      <image class="menu-icon" src="/assets/icons/settings.png" mode="aspectFit" />
+      <view class="menu-info">
+        <view class="menu-title">设置与隐私</view>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="brand-foot">
+    <image class="brand-foot-mark" src="/assets/images/brand-mark.png" mode="aspectFit" />
+    <text class="brand-foot-text">—— 无人车共享运力 ——</text>
+  </view>
+</view>

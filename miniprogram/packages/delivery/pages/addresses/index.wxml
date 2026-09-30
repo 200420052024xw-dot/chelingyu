@@ -1,0 +1,31 @@
+<view class="page page-bottom-action">
+  <view class="list">
+    <view class="addr-card press-scale" hover-class="addr-card-hover" wx:for="{{addresses}}" wx:key="id" data-id="{{item.id}}" bindtap="onCardTap">
+      <view class="addr-head">
+        <view class="addr-name">
+          <text>{{item.name}}</text>
+          <text class="addr-tag" wx:if="{{item.label === 'home'}}">家</text>
+          <text class="addr-tag" wx:if="{{item.label === 'company'}}">公司</text>
+          <text class="addr-tag" wx:if="{{item.label === 'school'}}">学校</text>
+        </view>
+        <text class="addr-edit">{{selecting ? '选择' : '编辑'}}</text>
+      </view>
+      <view class="addr-detail ellipsis-2">{{item.detail}}</view>
+      <view class="addr-contact">{{item.contactName}} {{item.contactMobile}}</view>
+      <view class="addr-actions" wx:if="{{!selecting}}">
+        <view class="addr-action {{item.isDefaultSender ? 'on' : ''}} press-scale" hover-class="addr-action-hover" catchtap="onSetDefaultSender" data-id="{{item.id}}">
+          <view class="check {{item.isDefaultSender ? 'on' : ''}}">✓</view>
+          <text>默认寄件</text>
+        </view>
+        <view class="addr-action {{item.isDefaultReceiver ? 'on' : ''}} press-scale" hover-class="addr-action-hover" catchtap="onSetDefaultReceiver" data-id="{{item.id}}">
+          <view class="check {{item.isDefaultReceiver ? 'on' : ''}}">✓</view>
+          <text>默认收件</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-action">
+    <button class="btn-primary" bindtap="onAdd">+ 新增地址</button>
+  </view>
+</view>

@@ -1,0 +1,100 @@
+function pad2(value) {
+  return value < 10 ? "0" + value : "" + value;
+}
+
+function money(fen) {
+  var amount = fen || 0;
+  var yuan = Math.floor(amount / 100);
+  var cents = Math.abs(amount % 100);
+  return "¥ " + yuan + "." + pad2(cents);
+}
+
+function volume(liters) {
+  var value = liters || 0;
+  if (value >= 1000) {
+    return (Math.round(value / 100) / 10) + " m³";
+  }
+  return value + " L";
+}
+
+function distance(meters) {
+  var value = meters || 0;
+  if (value >= 1000) {
+    return (Math.round(value / 100) / 10) + " km";
+  }
+  return Math.round(value) + " m";
+}
+
+function coordinate(value) {
+  return Math.round((value || 0) * 10000) / 10000;
+}
+
+function time(iso) {
+  if (!iso) return "—";
+  var value = "" + iso;
+  return value.replace("T", " ").replace("Z", "").slice(5, 16);
+}
+
+function category(value) {
+  var labels = {
+    order: "订单问题",
+    vehicle: "车辆问题",
+    payment: "支付/退款",
+    complaint: "投诉建议",
+    other: "其他"
+  };
+  return labels[value] || value || "其他";
+}
+
+function ticketStatus(value) {
+  var labels = {
+    open: "待处理",
+    processing: "处理中",
+    resolved: "已解决",
+    closed: "已关闭"
+  };
+  return labels[value] || value || "—";
+}
+
+function ranges(items) {
+  if (!items || !items.length) return "未设置";
+  var days = ["一", "二", "三", "四", "五", "六", "日"];
+  var output = [];
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var weekdays = [];
+    for (var j = 0; j < item.weekdays.length; j++) {
+      weekdays.push(days[item.weekdays[j] - 1]);
+    }
+    output.push("周" + weekdays.join("/") + " " + item.startTime + "-" + item.endTime);
+  }
+  return output.join("，");
+}
+
+function has(items, value) {
+  if (!items) return false;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i] === value) return true;
+  }
+  return false;
+}
+
+function messageIcon(type) {
+  if (type === "order") return "/assets/icons/box.png";
+  if (type === "payment") return "/assets/icons/money.png";
+  if (type === "vehicle") return "/assets/icons/vehicle.png";
+  return "/assets/icons/message.png";
+}
+
+module.exports = {
+  money: money,
+  volume: volume,
+  distance: distance,
+  coordinate: coordinate,
+  time: time,
+  category: category,
+  ticketStatus: ticketStatus,
+  ranges: ranges,
+  has: has,
+  messageIcon: messageIcon
+};

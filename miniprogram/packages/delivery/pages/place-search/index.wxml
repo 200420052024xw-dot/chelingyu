@@ -1,0 +1,20 @@
+<view class="page place-page">
+  <view class="search-card">
+    <view class="field-label">服务城市</view>
+    <picker mode="region" value="{{regionValue}}" bindchange="onRegionChange">
+      <view class="city-picker">{{city || '选择省、市、区'}}</view>
+    </picker>
+    <view class="search-row">
+      <input class="keyword-input" placeholder="街道、园区、楼宇或地点" value="{{keyword}}" bindinput="onInput" confirm-type="search" bindconfirm="onSearch" />
+      <button class="search-btn" bindtap="onSearch" loading="{{searching}}">搜索</button>
+    </view>
+  </view>
+  <view class="hint">{{hint}}</view>
+  <view class="results">
+    <view class="result" wx:for="{{results}}" wx:key="id" data-index="{{index}}" bindtap="onChoose">
+      <view class="result-title">{{item.title}}</view>
+      <view class="result-address">{{item.city}} {{item.address}}</view>
+    </view>
+  </view>
+  <button class="native-btn" bindtap="onNativeChoose">在微信地图上选点</button>
+</view>

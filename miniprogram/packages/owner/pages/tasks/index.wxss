@@ -1,0 +1,115 @@
+.page {
+  background: var(--color-bg);
+  min-height: 100vh;
+  padding: 0;
+}
+
+.tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1rpx solid var(--color-divider);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: var(--font-body);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  position: relative;
+  transition: color var(--motion-fast) var(--ease-out);
+}
+
+.tab.active {
+  color: var(--color-primary-deep);
+  font-weight: 700;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 6rpx;
+  border-radius: 6rpx;
+  background: var(--color-primary);
+}
+
+.list {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.task-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--motion-fast) var(--ease-out),
+              box-shadow var(--motion-fast) var(--ease-out);
+}
+
+.task-card:active {
+  transform: scale(0.99);
+  background: var(--color-primary-tint);
+  box-shadow: var(--shadow-elev);
+}
+
+.task-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-no {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+  font-family: monospace;
+}
+
+.task-route {
+  padding: 16rpx 0;
+}
+
+.route-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.route-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+}
+
+.dot-pickup { background: var(--color-pickup); }
+.dot-dropoff { background: var(--color-dropoff); }
+
+.route-name {
+  font-size: var(--font-body);
+  color: var(--color-text-strong);
+  font-weight: 500;
+}
+
+.route-line {
+  width: 2rpx;
+  height: 24rpx;
+  background: var(--color-divider);
+  margin: 4rpx 0 4rpx 7rpx;
+}
+
+.task-time {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+  padding-top: 12rpx;
+  border-top: 1rpx solid var(--color-divider);
+}

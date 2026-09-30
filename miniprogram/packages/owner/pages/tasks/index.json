@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "车辆任务",
+  "navigationBarBackgroundColor": "#FFFFFF",
+  "navigationBarTextStyle": "black",
+  "usingComponents": {
+    "status-badge": "/components/status-badge/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

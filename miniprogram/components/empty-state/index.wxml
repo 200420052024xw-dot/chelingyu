@@ -1,0 +1,7 @@
+<view class="empty-state">
+  <image wx:if="{{image}}" class="empty-illu" src="{{image}}" mode="aspectFit"></image>
+  <view wx:elif="{{iconText}}" class="empty-icon">{{iconText}}</view>
+  <view class="empty-title">{{title}}</view>
+  <view class="empty-desc" wx:if="{{desc}}">{{desc}}</view>
+  <slot />
+</view>

@@ -1,0 +1,219 @@
+<wxs module="fmt" src="../../../../utils/format.wxs"></wxs>
+<view class="page page-bottom-action">
+  <block wx:if="{{view}}">
+    <!-- 顶部状态 -->
+    <view class="status-banner">
+      <view class="status-row">
+        <view class="status-icon"><image src="{{statusIcon}}" mode="aspectFit"></image></view>
+        <view class="status-row-text">
+          <view class="status-title">{{statusBadge.text}}</view>
+          <view class="status-meta-inline">订单号 {{view.order.orderNo}}</view>
+        </view>
+        <status-badge text="{{statusBadge.text}}" tone="{{statusBadge.tone}}" />
+      </view>
+      <view class="status-hint">{{statusHint}}</view>
+
+      <!-- 步骤进度条 -->
+      <view class="step-strip">
+        <view
+          class="step {{index <= statusStepIndex ? 'done' : ''}} {{index === statusStepIndex ? 'current' : ''}}"
+          wx:for="{{orderSteps}}"
+          wx:key="key"
+        >
+          <view class="step-dot">
+            <view wx:if="{{index < statusStepIndex}}" class="step-dot-check">✓</view>
+          </view>
+          <view class="step-label">{{item.label}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 车辆信息（已分配） -->
+    <view class="card vehicle-card" wx:if="{{view.assignedVehiclePublic}}">
+      <view class="vehicle-head">
+        <image class="vehicle-image" src="{{view.assignedVehiclePublic.modelImage}}" mode="aspectFit" />
+        <view class="vehicle-info">
+          <view class="vehicle-name">{{view.assignedVehiclePublic.modelName}}</view>
+          <view class="vehicle-no">车牌：{{view.assignedVehiclePublic.vehicleNo}}</view>
+          <view class="vehicle-meta">
+            <view class="meta-pill">
+              <text class="meta-pill-label">电量</text>
+              <text class="meta-pill-val">{{view.assignedVehiclePublic.batteryPercent}}%</text>
+            </view>
+            <view class="meta-pill">
+              <text class="meta-pill-label">续航</text>
+              <text class="meta-pill-val">{{view.assignedVehiclePublic.remainingRangeMeters / 1000}}km</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="card vehicle-card hq-capacity-card" wx:elif="{{view.order.dispatchSource === 'headquarters'}}">
+      <view class="vehicle-name">{{view.order.vehicleSnapshot.modelName}} · 总部调车</view>
+      <view class="vehicle-no">运力已确认，具体车辆与到达时间以调度联系为准。</view>
+    </view>
+
+    <!-- 地址/货物 -->
+    <view class="card">
+      <view class="section-title">配送信息</view>
+      <view class="address-row">
+        <view class="address-dot dot-pickup"></view>
+        <view class="address-info">
+          <view class="address-label">寄件</view>
+          <view class="address-name">{{view.order.sender.name}}</view>
+          <view class="address-detail ellipsis-2">{{view.order.sender.detail}}</view>
+          <view class="address-contact">{{view.order.sender.contactName}} {{view.order.sender.contactMobile}}</view>
+        </view>
+      </view>
+      <view class="address-row">
+        <view class="address-dot dot-dropoff"></view>
+        <view class="address-info">
+          <view class="address-label">收件</view>
+          <view class="address-name">{{view.order.receiver.name}}</view>
+          <view class="address-detail ellipsis-2">{{view.order.receiver.detail}}</view>
+          <view class="address-contact">{{view.order.receiver.contactName}} {{view.order.receiver.contactMobile}}</view>
+        </view>
+      </view>
+
+      <view class="divider"></view>
+
+      <view class="cargo-row">
+        <view class="cargo-cell">
+          <text class="cargo-key">物品</text>
+          <text class="cargo-val">{{view.order.cargo.description}}</text>
+        </view>
+        <view class="cargo-cell">
+          <text class="cargo-key">数量</text>
+          <text class="cargo-val">{{view.order.cargo.quantity}} 件</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 时间线 -->
+    <view class="card">
+      <view class="section-title">订单进度</view>
+      <view class="timeline">
+        <view class="timeline-item {{index === 0 ? 'first' : ''}} {{item.isCurrent ? 'current' : ''}}" wx:for="{{timeline}}" wx:key="occurredAt">
+          <view class="timeline-dot"></view>
+          <view class="timeline-content">
+            <view class="timeline-label">{{item.label}}</view>
+            <view class="timeline-time">{{item.time}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="demo-actions">
+        <view class="demo-title">模拟订单进度</view>
+        <view class="demo-row">
+          <button
+            class="demo-btn"
+            wx:if="{{fmt.has(view.allowedActions, 'advance')}}"
+            bindtap="onAdvance"
+            hover-class="demo-btn-hover"
+          >推进</button>
+          <button
+            class="demo-btn"
+            wx:if="{{fmt.has(view.allowedActions, 'confirm_loaded')}}"
+            bindtap="onConfirmLoaded"
+            hover-class="demo-btn-hover"
+          >确认装货</button>
+          <button
+            class="demo-btn primary"
+            wx:if="{{fmt.has(view.allowedActions, 'confirm_received')}}"
+            bindtap="onConfirmReceived"
+            hover-class="demo-btn-hover"
+          >确认收货</button>
+          <button
+            class="demo-btn ghost"
+            bindtap="onAdvanceClock"
+            hover-class="demo-btn-hover"
+          >时钟 +10 分钟</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 费用与支付 -->
+    <view class="card">
+      <view class="section-title">费用明细</view>
+      <view class="fee-row" wx:for="{{view.order.priceItems}}" wx:key="type">
+        <text class="fee-label">{{item.label}}</text>
+        <text class="fee-val">{{fmt.money(item.amountFen)}}</text>
+      </view>
+      <view class="divider"></view>
+      <view class="total-row">
+        <text>总计</text>
+        <text class="total-val">{{fmt.money(view.order.totalAmountFen)}}</text>
+      </view>
+
+      <view class="pay-row" wx:if="{{view.payment}}">
+        <view class="kv-row">
+          <text class="kv-key">支付方式</text>
+          <text class="kv-val">{{view.payment.channel === 'mock' ? '模拟支付' : '微信支付'}}</text>
+        </view>
+        <view class="kv-row">
+          <text class="kv-key">支付状态</text>
+          <text class="kv-val">{{view.payment.status === 'succeeded' ? '支付成功' : view.payment.status === 'failed' ? '支付失败' : '待支付'}}</text>
+        </view>
+      </view>
+
+      <view class="pay-row" wx:if="{{view.refund}}">
+        <view class="kv-row">
+          <text class="kv-key">退款状态</text>
+          <text class="kv-val">{{view.refund.status === 'succeeded' ? '退款成功' : view.refund.status === 'processing' ? '退款处理中' : '退款待处理'}}</text>
+        </view>
+        <view class="kv-row">
+          <text class="kv-key">退款金额</text>
+          <text class="kv-val">{{fmt.money(view.refund.amountFen)}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 联系客服 -->
+    <view class="card support-card press-scale" bindtap="onCallSupport">
+      <view class="support-row">
+        <image class="support-icon" src="/assets/icons/chat.png" mode="aspectFit" />
+        <view class="support-text-block">
+          <text class="support-text">联系客服</text>
+          <text class="support-sub">订单问题可一键关联工单</text>
+        </view>
+        <text class="support-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="bottom-action" wx:if="{{view.allowedActions.length > 0}}">
+      <view class="action-row">
+        <button
+          class="btn-primary outline"
+          wx:if="{{fmt.has(view.allowedActions, 'cancel')}}"
+          bindtap="onOpenCancel"
+        >取消订单</button>
+        <button
+          class="btn-primary"
+          wx:if="{{fmt.has(view.allowedActions, 'pay') || fmt.has(view.allowedActions, 'retry_pay')}}"
+          bindtap="onRetryPay"
+          disabled="{{payProcessing}}"
+        >{{fmt.has(view.allowedActions, 'retry_pay') ? '重新支付' : '去支付'}}</button>
+      </view>
+    </view>
+  </block>
+
+  <!-- 取消弹窗 -->
+  <view class="modal-mask" wx:if="{{cancelModalOpen}}" bindtap="onCloseCancel">
+    <view class="modal" catchtap="">
+      <view class="modal-title">取消订单</view>
+      <view class="modal-reasons">
+        <view
+          class="reason {{cancelReason === item.value ? 'active' : ''}}"
+          wx:for="{{cancelReasons}}"
+          wx:key="value"
+          data-value="{{item.value}}"
+          bindtap="onPickCancelReason"
+        >{{item.label}}</view>
+      </view>
+      <view class="modal-actions">
+        <button class="btn-primary outline" bindtap="onCloseCancel">暂不取消</button>
+        <button class="btn-primary" bindtap="onConfirmCancel">确认取消</button>
+      </view>
+    </view>
+  </view>
+</view>

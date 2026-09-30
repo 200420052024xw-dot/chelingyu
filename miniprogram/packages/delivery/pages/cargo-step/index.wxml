@@ -1,0 +1,143 @@
+<view class="page page-bottom-action">
+  <view class="stepper">
+    <view class="step done">
+      <view class="step-num done">✓</view>
+      <text class="step-label done">填写地址</text>
+    </view>
+    <view class="step-line done"></view>
+    <view class="step active">
+      <view class="step-num active">2</view>
+      <text class="step-label active">物品信息</text>
+    </view>
+    <view class="step-line"></view>
+    <view class="step">
+      <view class="step-num">3</view>
+      <text class="step-label">选择车型</text>
+    </view>
+  </view>
+
+  <!-- 物品类型 -->
+  <view class="card">
+    <view class="section-title">物品类型</view>
+    <view class="cat-grid">
+      <view
+        wx:for="{{categories}}"
+        wx:key="value"
+        class="cat-item {{category === item.value ? 'active' : ''}}"
+        data-value="{{item.value}}"
+        bindtap="onPickCategory"
+      >
+        <view class="cat-icon-wrap">
+          <text class="cat-mark">{{item.mark}}</text>
+        </view>
+        <view class="cat-name">{{item.label}}</view>
+        <view class="cat-check" wx:if="{{category === item.value}}">✓</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 物品名称 / 描述 -->
+  <view class="card">
+    <view class="section-title">货物描述</view>
+    <view class="input-cell">
+      <input
+        placeholder="请填写货物名称、包装方式等关键信息"
+        placeholder-class="ph"
+        value="{{description}}"
+        maxlength="200"
+        bindinput="onDescriptionInput"
+      />
+      <view class="counter">{{description.length}}/200</view>
+    </view>
+  </view>
+
+  <view class="form-note">请填写货物的实际总数量与单件参数，平台据此校验车型承载能力</view>
+  <!-- 数量 + 单件重量 -->
+  <view class="card">
+    <view class="form-grid">
+      <view class="form-cell">
+        <view class="cell-label">数量</view>
+        <view class="quantity">
+          <view class="qty-btn" bindtap="onMinus">−</view>
+          <input
+            class="qty-input"
+            type="number"
+            value="{{quantity}}"
+            bindinput="onQuantityInput"
+          />
+          <view class="qty-unit">件</view>
+          <view class="qty-btn" bindtap="onPlus">+</view>
+        </view>
+      </view>
+      <view class="form-cell">
+        <view class="cell-label">单件重量</view>
+        <view class="input-cell small">
+          <input
+            placeholder="选填"
+            placeholder-class="ph"
+            value="{{unitWeightKg}}"
+            type="digit"
+            bindinput="onWeightInput"
+          />
+          <view class="cell-suffix">kg</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 体积尺寸 -->
+  <view class="card">
+    <view class="cell-label">单件外包装尺寸 <text class="optional">（选填）</text></view>
+    <view class="dim-row">
+      <view class="input-cell small flex-1">
+        <input placeholder="长" placeholder-class="ph" value="{{lengthMm}}" type="digit" bindinput="onLengthInput" />
+        <view class="cell-suffix">cm</view>
+      </view>
+      <view class="input-cell small flex-1">
+        <input placeholder="宽" placeholder-class="ph" value="{{widthMm}}" type="digit" bindinput="onWidthInput" />
+        <view class="cell-suffix">cm</view>
+      </view>
+      <view class="input-cell small flex-1">
+        <input placeholder="高" placeholder-class="ph" value="{{heightMm}}" type="digit" bindinput="onHeightInput" />
+        <view class="cell-suffix">cm</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 特殊要求 -->
+  <view class="card">
+    <view class="toggle-cell" bindtap="onToggleFragile">
+      <view class="toggle-info">
+        <view class="requirement-title">
+          <view class="requirement-mark">!</view>
+          <text class="cell-label inline-label">易碎物品</text>
+        </view>
+        <view class="cell-desc">提示车辆轻拿轻放</view>
+      </view>
+      <view class="toggle {{fragile ? 'on' : ''}}">
+        <view class="toggle-thumb"></view>
+      </view>
+    </view>
+    <view class="divider"></view>
+    <view class="handling-cell">
+      <view class="handling-head">
+        <view class="requirement-mark handling-mark">i</view>
+        <view class="handling-info">
+          <view class="cell-label">装卸方式</view>
+          <view class="cell-desc">配送服务不含人工搬运</view>
+        </view>
+      </view>
+      <view class="handling-banner">
+        <view class="handling-banner-tag">服务说明</view>
+        <view class="handling-banner-text">取件与收件时，请由现场联系人完成货物装载和卸货。</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-action">
+    <view class="action-row">
+      <button class="btn-primary outline prev-btn" bindtap="onPrev">上一步</button>
+      <button class="btn-primary next-btn" bindtap="onNext">下一步</button>
+    </view>
+  </view>
+</view>

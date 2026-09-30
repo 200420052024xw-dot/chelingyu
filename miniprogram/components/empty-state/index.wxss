@@ -1,0 +1,40 @@
+.empty-state {
+  padding: 80rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.empty-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56rpx;
+  margin-bottom: 16rpx;
+}
+
+.empty-illu {
+  width: 240rpx;
+  height: 240rpx;
+  margin-bottom: 16rpx;
+  animation: fade-in var(--motion-slow) var(--ease-out) both;
+}
+
+.empty-title {
+  font-size: 30rpx;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.empty-desc {
+  font-size: var(--font-caption);
+  color: var(--color-text-muted);
+}

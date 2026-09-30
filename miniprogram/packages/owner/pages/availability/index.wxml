@@ -1,0 +1,55 @@
+<view class="page page-bottom-action">
+  <view class="card">
+    <view class="row-toggle">
+      <view class="row-info">
+        <view class="row-title">共享给平台</view>
+        <view class="row-desc">开启后，车辆将进入平台运力池参与订单匹配</view>
+      </view>
+      <view class="toggle {{ownerShared ? 'on' : ''}}" bindtap="onToggleShare">
+        <view class="toggle-thumb"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">开放运营时段</view>
+    <view class="weekdays">
+      <view
+        wx:for="{{['一','二','三','四','五','六','日']}}"
+        wx:key="*this"
+        class="weekday {{weekdayEnabled[index] ? 'active' : ''}}"
+        data-idx="{{index}}"
+        bindtap="onToggleDay"
+      >周{{item}}</view>
+    </view>
+
+    <view class="time-row">
+      <picker mode="time" value="{{startTime}}" bindchange="onPickStart" class="time-cell">
+        <view class="picker-cell">
+          <text class="picker-label">开始时间</text>
+          <text class="picker-value">{{startTime}}</text>
+        </view>
+      </picker>
+      <text class="time-arrow">→</text>
+      <picker mode="time" value="{{endTime}}" bindchange="onPickEnd" class="time-cell">
+        <view class="picker-cell">
+          <text class="picker-label">结束时间</text>
+          <text class="picker-value">{{endTime}}</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="error" wx:if="{{error}}">{{error}}</view>
+  </view>
+
+  <view class="card tip">
+    <view class="tip-icon">ℹ️</view>
+    <view class="tip-text">
+      关闭共享不会破坏正在执行或已承诺的预约，但会影响后续新任务的匹配。
+    </view>
+  </view>
+
+  <view class="bottom-action">
+    <button class="btn-primary" bindtap="onSave" disabled="{{saving}}">保存设置</button>
+  </view>
+</view>
