@@ -41,7 +41,8 @@ exports.paymentService = {
         index_1.repo.upsertPayment(payment);
         if (payment.status === "succeeded") {
             // 标记订单 paid
-            const updated = order_1.orderService.advance({ orderId: order.id });
+            const paid = order_1.orderService.advance({ orderId: order.id });
+            const updated = paid.status === "paid" ? order_1.orderService.advance({ orderId: order.id }) : paid;
             return { payment, order: updated };
         }
         return { payment, order };

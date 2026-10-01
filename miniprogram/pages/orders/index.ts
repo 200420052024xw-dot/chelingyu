@@ -7,7 +7,7 @@ import { withPagePerformance } from "../../utils/page-performance";
 
 interface PageData {
   loading: boolean;
-  filter: "all" | "active" | "pending_payment" | "completed" | "cancelled";
+  filter: "all" | "active" | "pending_headquarters_review" | "pending_payment" | "completed" | "cancelled";
   list: Array<{
     id: string;
     orderNo: string;
@@ -37,6 +37,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("orders", {
     tabs: [
       { key: "all", label: "全部" },
       { key: "active", label: "进行中" },
+      { key: "pending_headquarters_review", label: "待审核" },
       { key: "pending_payment", label: "待支付" },
       { key: "completed", label: "已完成" },
       { key: "cancelled", label: "已取消" },
@@ -46,6 +47,13 @@ Page<PageData, any>(withPagePerformance<PageData, any>("orders", {
   onLoad() {
     this.refresh();
     instance.unsubscribe = subscribeDB(() => this.refresh());
+  },
+
+  onShow() {
+    orderService.list({ status: "active" }).forEach((order) => {
+      if (order.serviceTimeMode === "scheduled" || order.dispatchSource === "headquarters") orderService.dispatchReadyOrder(order.id);
+    });
+    this.refresh();
   },
 
   onUnload() {
@@ -64,7 +72,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("orders", {
       sender: o.sender.name,
       receiver: o.receiver.name,
       vehicleModelName: o.vehicleSnapshot.modelName,
-      dispatchSourceLabel: o.dispatchSource === "headquarters" ? "总部调车" : "附近演示运力",
+      dispatchSourceLabel: o.dispatchSource === "headquarters" ? "总部调车" : "附近车辆",
     }));
     this.setData({ list, loading: false });
   },

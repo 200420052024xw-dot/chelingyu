@@ -1,0 +1,14 @@
+.page { min-height: 100vh; padding: 24rpx; background: var(--color-bg); }
+.hero, .card { background: #fff; border-radius: 24rpx; padding: 32rpx; margin-bottom: 20rpx; box-shadow: var(--shadow-card); }
+.hero-image { width: 100%; height: 350rpx; background: var(--color-surface-soft); border-radius: 18rpx; }
+.code { display: inline-block; margin-top: 24rpx; padding: 6rpx 16rpx; border-radius: 999rpx; background: var(--color-primary-soft); color: var(--color-primary-deep); font-size: 22rpx; }
+.name { margin-top: 16rpx; font-size: 38rpx; font-weight: 700; color: var(--color-text-strong); }
+.description { margin-top: 12rpx; font-size: 26rpx; line-height: 1.6; color: var(--color-text-muted); }
+.title { font-size: 30rpx; font-weight: 700; color: var(--color-text-strong); margin-bottom: 22rpx; }
+.spec-grid { display: flex; flex-wrap: wrap; gap: 22rpx; }
+.spec { width: calc(50% - 11rpx); box-sizing: border-box; padding: 20rpx; border-radius: 16rpx; background: var(--color-surface-soft); display: flex; flex-direction: column; gap: 10rpx; }
+.label { font-size: 23rpx; color: var(--color-text-muted); }
+.value { font-size: 27rpx; font-weight: 600; color: var(--color-text-strong); }
+.size-row { display: flex; justify-content: space-between; align-items: center; gap: 16rpx; padding: 24rpx 0; border-bottom: 1rpx solid var(--color-divider); }
+.size-row:last-child { border-bottom: 0; }
+.missing { padding: 80rpx 30rpx; text-align: center; color: var(--color-text-muted); }

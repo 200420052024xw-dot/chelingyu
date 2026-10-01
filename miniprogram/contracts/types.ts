@@ -238,6 +238,7 @@ export type OrderType = "task_delivery" | "capacity_reservation";
 
 /** 履约状态 */
 export type OrderStatus =
+  | "pending_headquarters_review"
   | "pending_payment"
   | "paid"
   | "scheduled"
@@ -291,6 +292,9 @@ export interface DeliveryOrder extends BaseEntity {
   status: OrderStatus;
   dispatchSource?: "nearby" | "headquarters";
   headquartersConfirmed?: boolean;
+  headquartersReviewReason?: string;
+  headquartersReviewedAt?: ISODateTime;
+  headquartersReviewerId?: ID;
   estimatedPickupAt?: ISODateTime;
   estimatedDeliveryAt?: ISODateTime;
   actualPickupAt?: ISODateTime;
@@ -522,6 +526,7 @@ export interface ModelOfferView {
   category: VehicleCategory;
   maxLoadGrams: WeightGram;
   cargoVolumeLiters: VolumeLiter;
+  cargoBoxDimensionsMm?: DimensionsMm;
   availableCount: number;
   distanceMeters: DistanceMeter;
   estimatedArrivalMinutes: number;

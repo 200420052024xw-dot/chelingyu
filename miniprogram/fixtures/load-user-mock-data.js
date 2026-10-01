@@ -124,7 +124,7 @@ function applyUserMockData(db) {
                 imageUrl: m.imagePath,
                 maxLoadGrams: m.maxLoadGrams,
                 cargoVolumeLiters: m.cargoVolumeLiters,
-                cargoBoxDimensionsMm: { length: 0, width: 0, height: 0 },
+                cargoBoxDimensionsMm: undefined,
                 energyType: "electric",
                 supportsColdChain: m.supportsColdChain,
                 supportedCargoCategories: ["general", "document", "food", "medical", "other"],

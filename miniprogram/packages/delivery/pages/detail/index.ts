@@ -7,6 +7,7 @@ import { subscribeDB } from "../../../../repositories/local-database";
 import { formatMoneyFen, statusBadge, statusHint, timelineEventLabel, formatEventTime } from "../../../../view-models/order";
 import { identity } from "../../../../adapters/identity";
 import { advanceDemoClock } from "../../../../adapters/clock";
+import { formatDateTime } from "../../../../adapters/clock";
 import { withPagePerformance } from "../../../../utils/page-performance";
 
 interface PageData {
@@ -21,14 +22,17 @@ interface PageData {
   statusIcon: string;
   statusStepIndex: number;
   orderSteps: Array<{ key: string; label: string }>;
+  scheduledPickupLabel: string;
   timeline: Array<{ label: string; time: string; isCurrent: boolean; isFuture: boolean; actor: string }>;
   // 演示：取消原因
   cancelReasons: Array<{ label: string; value: string }>;
 }
 
 const ORDER_STEPS: Array<{ key: string; label: string }> = [
+  { key: "pending_headquarters_review", label: "总部审核" },
   { key: "pending_payment", label: "待支付" },
   { key: "paid", label: "已支付" },
+  { key: "scheduled", label: "待派车" },
   { key: "matching", label: "匹配车辆" },
   { key: "dispatched", label: "已派车" },
   { key: "vehicle_to_pickup", label: "前往取件" },
@@ -39,6 +43,7 @@ const ORDER_STEPS: Array<{ key: string; label: string }> = [
 ];
 
 const STATUS_ICONS: Record<string, string> = {
+  pending_headquarters_review: "/assets/icons/tabler/clock-hour-4.svg",
   pending_payment: "/assets/icons/money.png",
   paid: "/assets/icons/check.png",
   matching: "/assets/icons/search.png",
@@ -71,6 +76,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/detail", {
     statusIcon: "/assets/icons/box.png",
     statusStepIndex: 0,
     orderSteps: ORDER_STEPS,
+    scheduledPickupLabel: "",
     timeline: [],
     cancelReasons: [
       { label: "临时改变计划", value: "临时改变计划" },
@@ -86,6 +92,13 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/detail", {
     detailPageInstance.unsubscribe = subscribeDB(() => this.refresh());
   },
 
+  onShow() {
+    if (this.data.orderId) {
+      orderService.dispatchReadyOrder(this.data.orderId);
+      this.refresh();
+    }
+  },
+
   onUnload() {
     detailPageInstance.unsubscribe?.();
   },
@@ -94,13 +107,20 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/detail", {
     try {
       const view = orderService.detail(this.data.orderId);
       const timeline = this.buildTimeline(view.order, view.events);
-      const stepIndex = ORDER_STEPS.findIndex((s) => s.key === view.order.status);
+      const orderSteps = ORDER_STEPS.filter((step) =>
+        (step.key !== "pending_headquarters_review" || view.order.dispatchSource === "headquarters") &&
+        (step.key !== "scheduled" || view.order.serviceTimeMode === "scheduled"));
+      const stepIndex = orderSteps.findIndex((s) => s.key === view.order.status);
       this.setData({
         view,
         loading: false,
+        orderSteps,
+        scheduledPickupLabel: view.order.scheduledPickupAt ? formatDateTime(view.order.scheduledPickupAt) : "",
         statusBadge: statusBadge(view.order.status),
-        statusHint: view.order.dispatchSource === "headquarters"
-          ? (view.order.status === "pending_payment" ? "总部已确认可调车，完成支付后进入调度" : "总部调车申请已确认，预计时间以调度联系为准")
+        statusHint: view.order.status === "failed" && view.order.headquartersReviewReason
+          ? `总部审核未通过：${view.order.headquartersReviewReason}`
+          : view.order.status === "matching" && view.order.dispatchSource === "headquarters"
+          ? "待总部协调同车型可用车辆"
           : statusHint(view.order.status),
         statusIcon: STATUS_ICONS[view.order.status] || "/assets/icons/box.png",
         statusStepIndex: stepIndex >= 0 ? stepIndex : 0,
@@ -218,6 +238,8 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/detail", {
 
   onAdvanceClock() {
     advanceDemoClock(10);
+    orderService.dispatchReadyOrder(this.data.orderId);
+    this.refresh();
     wx.showToast({ title: "模拟时间 +10 分钟", icon: "none" });
   },
 

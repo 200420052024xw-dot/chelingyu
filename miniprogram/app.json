@@ -11,6 +11,7 @@
       "pages": [
         "pages/cargo-step/index",
         "pages/model-step/index",
+        "pages/model-detail/index",
         "pages/confirm/index",
         "pages/detail/index",
         "pages/addresses/index",

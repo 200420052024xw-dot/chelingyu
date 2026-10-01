@@ -68,23 +68,28 @@
 
 .address-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16rpx;
 }
 
-.address-dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  margin-top: 12rpx;
-  flex-shrink: 0;
+.address-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  flex: 0 0 72rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid transparent;
 }
 
-.dot-pickup { background: var(--color-pickup); }
-.dot-dropoff { background: var(--color-dropoff); }
+.pickup-icon-wrap { background: #EAF8F0; border-color: #D4F0E0; }
+.dropoff-icon-wrap { background: #FFF1EC; border-color: #FFE0D5; }
+.address-icon { width: 42rpx; height: 42rpx; }
 
 .address-info {
   flex: 1;
+  min-width: 0;
 }
 
 .address-label {
@@ -93,16 +98,35 @@
 }
 
 .address-name {
-  font-size: var(--font-body);
-  font-weight: 600;
+  font-size: 26rpx;
+  font-weight: 500;
   color: var(--color-text-strong);
-  margin-top: 4rpx;
+  margin-top: 8rpx;
 }
 
 .address-detail {
-  font-size: var(--font-caption);
+  font-size: 24rpx;
   color: var(--color-text-muted);
+  line-height: 1.45;
+  margin-top: 2rpx;
+}
+
+.address-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8rpx 16rpx;
   margin-top: 4rpx;
+  color: var(--color-text-strong);
+}
+
+.contact-name { font-size: 30rpx; font-weight: 600; }
+.contact-phone { font-size: 26rpx; font-weight: 500; }
+.address-placeholder {
+  margin-top: 4rpx;
+  font-size: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text-strong);
 }
 
 .address-actions {
@@ -110,12 +134,17 @@
 }
 
 .address-action {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  flex: 0 0 auto;
   font-size: var(--font-caption);
   color: var(--color-primary-deep);
   background: var(--color-primary-soft);
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
 }
+.address-action-arrow { width: 28rpx; height: 28rpx; }
 
 /* 常用地址 */
 .common-list {
@@ -236,9 +265,19 @@
   margin-bottom: 16rpx;
 }
 
+.time-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: 16rpx;
+  background: var(--color-primary-soft);
+}
+
 .time-icon {
-  width: 32rpx;
-  height: 32rpx;
+  width: 30rpx;
+  height: 30rpx;
 }
 
 .time-title {
@@ -254,6 +293,10 @@
 }
 
 .time-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
   flex: 1;
   text-align: center;
   padding: 16rpx;
@@ -263,6 +306,8 @@
   font-weight: 600;
   border: 2rpx solid transparent;
 }
+
+.time-mode-icon { width: 40rpx; height: 40rpx; flex: 0 0 40rpx; }
 
 .time-mode.active {
   background: var(--color-primary-soft);
@@ -307,7 +352,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12rpx;
 }
+
+.picker-label-group, .picker-end {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.picker-icon { width: 34rpx; height: 34rpx; flex: 0 0 34rpx; }
+.picker-arrow { width: 32rpx; height: 32rpx; flex: 0 0 32rpx; }
 
 .picker-label {
   font-size: var(--font-body);
@@ -318,4 +373,5 @@
   font-size: var(--font-body);
   color: var(--color-text-strong);
   font-weight: 600;
+  text-align: right;
 }

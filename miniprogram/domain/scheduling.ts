@@ -18,6 +18,21 @@ export interface SchedulingCheck {
   reasons: string[];
 }
 
+export function evaluateModelForCargo(model: VehicleModel, cargo: CargoInfo | undefined): SchedulingCheck {
+  const reasons: string[] = [];
+  if (!model.supportedCargoCategories.includes(cargo?.category ?? "general")) reasons.push("该车型不支持当前货物类型");
+  if (cargo?.category === "fresh_cold_chain" && !model.supportsColdChain) reasons.push("生鲜冷链货物需要冷藏车型");
+  if (cargo?.unitWeightGrams !== undefined && cargo.unitWeightGrams * cargo.quantity > model.maxLoadGrams) {
+    reasons.push("货物总重超出该车型最大载重");
+  }
+  const box = model.cargoBoxDimensionsMm;
+  if (cargo?.unitDimensionsMm && box && box.length > 0 && box.width > 0 && box.height > 0 &&
+    (cargo.unitDimensionsMm.length > box.length || cargo.unitDimensionsMm.width > box.width || cargo.unitDimensionsMm.height > box.height)) {
+    reasons.push("货物尺寸超过该车型货厢");
+  }
+  return { ok: reasons.length === 0, reasons };
+}
+
 export function evaluateVehicleForCargo(
   v: Vehicle,
   model: VehicleModel,
@@ -27,27 +42,7 @@ export function evaluateVehicleForCargo(
   if (!v.enabled) reasons.push("车辆已停用");
   if (!v.ownerShared) reasons.push("车主未开启共享");
   if (!["available"].includes(v.status)) reasons.push(`车辆状态非可用（${v.status}）`);
-  if (!model.supportedCargoCategories.includes(cargo?.category ?? "general")) {
-    reasons.push("当前车型不支持该货物类型");
-  }
-  if (cargo?.category === "fresh_cold_chain" && !model.supportsColdChain) {
-    reasons.push("该货物需要冷链车型");
-  }
-  if (cargo?.unitWeightGrams) {
-    const totalWeight = cargo.unitWeightGrams * cargo.quantity;
-    if (totalWeight > model.maxLoadGrams) {
-      reasons.push(`货物总重 ${Math.round(totalWeight / 1000)}kg 超出该车型最大载重`);
-    }
-  }
-  if (
-    cargo?.unitDimensionsMm &&
-    model.cargoBoxDimensionsMm &&
-    (cargo.unitDimensionsMm.length > model.cargoBoxDimensionsMm.length ||
-      cargo.unitDimensionsMm.width > model.cargoBoxDimensionsMm.width ||
-      cargo.unitDimensionsMm.height > model.cargoBoxDimensionsMm.height)
-  ) {
-    reasons.push("货物尺寸超过该车型货厢");
-  }
+  reasons.push(...evaluateModelForCargo(model, cargo).reasons);
   if (v.batteryPercent !== undefined && v.batteryPercent < 20) {
     reasons.push("电量不足");
   }
@@ -147,6 +142,7 @@ export function recommendModels(
 ): Array<{
   model: VehicleModel;
   availableCount: number;
+  nearestVehicleId?: string;
   nearestDistance: number;
   etaMinutes: number;
   recommended: boolean;
@@ -167,10 +163,11 @@ export function recommendModels(
       if (c.ok) matched.push(v);
       else if (reasons.length === 0) reasons.push(...c.reasons);
     }
-    const distances = matched
+    const nearest = matched
       .filter((v) => v.location)
-      .map((v) => haversineMeters(v.location as GeoPoint, draft.sender?.location ?? userLocation));
-    const minDist = distances.length ? Math.min(...distances) : 9999;
+      .map((vehicle) => ({ vehicle, distance: haversineMeters(vehicle.location as GeoPoint, draft.sender?.location ?? userLocation) }))
+      .sort((a, b) => a.distance - b.distance)[0];
+    const minDist = nearest?.distance ?? 9999;
     const eta = Math.max(3, Math.round((minDist / 1000 / 30) * 60));
     const recommended =
       !!draft.cargo && m.supportedCargoCategories.includes(draft.cargo.category) && matched.length > 0;
@@ -184,6 +181,7 @@ export function recommendModels(
     return {
       model: m,
       availableCount: matched.length,
+      nearestVehicleId: nearest?.vehicle.id,
       nearestDistance: minDist,
       etaMinutes: eta,
       recommended,

@@ -1,5 +1,6 @@
 import type { CargoCategory, CargoInfo } from "../../../../contracts/types";
 import { draftService } from "../../../../services/draft";
+import { updateBookingDraft } from "../../../../services/booking-draft";
 import { repo } from "../../../../repositories/index";
 import { CARGO_LABELS } from "../../../../view-models/cargo";
 import { withPagePerformance } from "../../../../utils/page-performance";
@@ -10,16 +11,22 @@ interface PageData {
   description: string;
   quantity: number;
   unitWeightKg: string;
-  lengthMm: string;
-  widthMm: string;
-  heightMm: string;
+  lengthMeters: string;
+  widthMeters: string;
+  heightMeters: string;
   fragile: boolean;
-  categories: Array<{ value: CargoCategory; label: string; mark: string }>;
+  categories: Array<{ value: CargoCategory; label: string; icon: string }>;
   loading: boolean;
+  returnToConfirm: boolean;
 }
 
-const CATEGORY_MARKS: Record<CargoCategory, string> = {
-  general: "箱", document: "文", fresh_cold_chain: "冷", food: "食", medical: "医", other: "物",
+const CATEGORY_ICONS: Record<CargoCategory, string> = {
+  general: "/assets/icons/tabler/package.svg",
+  document: "/assets/icons/tabler/file-text.svg",
+  fresh_cold_chain: "/assets/icons/tabler/snowflake.svg",
+  food: "/assets/icons/tabler/tools-kitchen-2.svg",
+  medical: "/assets/icons/tabler/first-aid-kit.svg",
+  other: "/assets/icons/tabler/dots.svg",
 };
 
 Page<PageData, any>(withPagePerformance<PageData, any>("delivery/cargo-step", {
@@ -29,16 +36,17 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/cargo-step", {
     description: "",
     quantity: 1,
     unitWeightKg: "",
-    lengthMm: "",
-    widthMm: "",
-    heightMm: "",
+    lengthMeters: "",
+    widthMeters: "",
+    heightMeters: "",
     fragile: false,
     categories: (Object.keys(CARGO_LABELS) as CargoCategory[]).map((k) => ({
       value: k,
       label: CARGO_LABELS[k],
-      mark: CATEGORY_MARKS[k],
+      icon: CATEGORY_ICONS[k],
     })),
     loading: true,
+    returnToConfirm: false,
   },
 
   onLoad(query) {
@@ -58,13 +66,14 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/cargo-step", {
     } as CargoInfo);
     this.setData({
       draftId,
+      returnToConfirm: query?.returnTo === "confirm",
       category: c.category,
       description: c.description ?? "",
       quantity: c.quantity ?? 1,
       unitWeightKg: c.unitWeightGrams !== undefined ? String(c.unitWeightGrams / 1000) : "",
-      lengthMm: c.unitDimensionsMm?.length !== undefined ? String(c.unitDimensionsMm.length / 10) : "",
-      widthMm: c.unitDimensionsMm?.width !== undefined ? String(c.unitDimensionsMm.width / 10) : "",
-      heightMm: c.unitDimensionsMm?.height !== undefined ? String(c.unitDimensionsMm.height / 10) : "",
+      lengthMeters: c.unitDimensionsMm?.length !== undefined ? String(c.unitDimensionsMm.length / 1000) : "",
+      widthMeters: c.unitDimensionsMm?.width !== undefined ? String(c.unitDimensionsMm.width / 1000) : "",
+      heightMeters: c.unitDimensionsMm?.height !== undefined ? String(c.unitDimensionsMm.height / 1000) : "",
       fragile: c.fragile ?? false,
       loading: false,
     });
@@ -94,9 +103,9 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/cargo-step", {
   },
 
   onWeightInput(e: any) { this.setData({ unitWeightKg: e.detail.value }); },
-  onLengthInput(e: any) { this.setData({ lengthMm: e.detail.value }); },
-  onWidthInput(e: any) { this.setData({ widthMm: e.detail.value }); },
-  onHeightInput(e: any) { this.setData({ heightMm: e.detail.value }); },
+  onLengthInput(e: any) { this.setData({ lengthMeters: e.detail.value }); },
+  onWidthInput(e: any) { this.setData({ widthMeters: e.detail.value }); },
+  onHeightInput(e: any) { this.setData({ heightMeters: e.detail.value }); },
 
   onToggleFragile() { this.setData({ fragile: !this.data.fragile }); },
 
@@ -113,9 +122,9 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/cargo-step", {
       wx.showToast({ title: "单件重量请填写大于 0 的数字", icon: "none" });
       return;
     }
-    const dimensions = [this.data.lengthMm, this.data.widthMm, this.data.heightMm];
-    if (dimensions.some(Boolean) && (dimensions.some((v) => !v) || dimensions.some((v) => !Number.isFinite(Number(v)) || Number(v) <= 0))) {
-      wx.showToast({ title: "长、宽、高请完整填写，且都要大于 0", icon: "none" });
+    const dimensions = [this.data.lengthMeters, this.data.widthMeters, this.data.heightMeters];
+    if (dimensions.some(Boolean) && (dimensions.some((v) => !v) || dimensions.some((v) => !Number.isFinite(Number(v)) || Math.round(Number(v) * 1000) <= 0))) {
+      wx.showToast({ title: "长、宽、高请完整填写，且至少为 0.001 米", icon: "none" });
       return;
     }
     const cargo: CargoInfo = {
@@ -123,17 +132,26 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/cargo-step", {
       description: this.data.description,
       quantity: this.data.quantity,
       unitWeightGrams: this.data.unitWeightKg ? Math.round(parseFloat(this.data.unitWeightKg) * 1000) : undefined,
-      unitDimensionsMm: this.data.lengthMm && this.data.widthMm && this.data.heightMm
+      unitDimensionsMm: this.data.lengthMeters && this.data.widthMeters && this.data.heightMeters
         ? {
-            length: Math.round(parseFloat(this.data.lengthMm) * 10) || 0,
-            width: Math.round(parseFloat(this.data.widthMm) * 10) || 0,
-            height: Math.round(parseFloat(this.data.heightMm) * 10) || 0,
+            length: Math.round(Number(this.data.lengthMeters) * 1000),
+            width: Math.round(Number(this.data.widthMeters) * 1000),
+            height: Math.round(Number(this.data.heightMeters) * 1000),
           }
         : undefined,
       fragile: this.data.fragile,
       needsHandling: false,
     };
-    draftService.update(this.data.draftId, (d) => ({ ...d, cargo }));
-    wx.navigateTo({ url: `/packages/delivery/pages/model-step/index?draftId=${this.data.draftId}` });
+    try {
+      if (this.data.returnToConfirm) {
+        updateBookingDraft(this.data.draftId, (d) => ({ ...d, cargo }));
+        wx.navigateBack();
+      } else {
+        draftService.update(this.data.draftId, (d) => ({ ...d, cargo }));
+        wx.navigateTo({ url: `/packages/delivery/pages/model-step/index?draftId=${this.data.draftId}` });
+      }
+    } catch (error: any) {
+      wx.showToast({ title: error?.message || "报价更新失败", icon: "none" });
+    }
   },
 }));

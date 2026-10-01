@@ -6,10 +6,13 @@ const local_database_1 = require("../../../../repositories/local-database");
 const order_2 = require("../../../../view-models/order");
 const identity_1 = require("../../../../adapters/identity");
 const clock_1 = require("../../../../adapters/clock");
+const clock_2 = require("../../../../adapters/clock");
 const page_performance_1 = require("../../../../utils/page-performance");
 const ORDER_STEPS = [
+    { key: "pending_headquarters_review", label: "总部审核" },
     { key: "pending_payment", label: "待支付" },
     { key: "paid", label: "已支付" },
+    { key: "scheduled", label: "待派车" },
     { key: "matching", label: "匹配车辆" },
     { key: "dispatched", label: "已派车" },
     { key: "vehicle_to_pickup", label: "前往取件" },
@@ -19,6 +22,7 @@ const ORDER_STEPS = [
     { key: "completed", label: "已完成" },
 ];
 const STATUS_ICONS = {
+    pending_headquarters_review: "/assets/icons/tabler/clock-hour-4.svg",
     pending_payment: "/assets/icons/money.png",
     paid: "/assets/icons/check.png",
     matching: "/assets/icons/search.png",
@@ -45,6 +49,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/detail", {
         statusIcon: "/assets/icons/box.png",
         statusStepIndex: 0,
         orderSteps: ORDER_STEPS,
+        scheduledPickupLabel: "",
         timeline: [],
         cancelReasons: [
             { label: "临时改变计划", value: "临时改变计划" },
@@ -58,6 +63,12 @@ Page((0, page_performance_1.withPagePerformance)("delivery/detail", {
         this.refresh();
         detailPageInstance.unsubscribe = (0, local_database_1.subscribeDB)(() => this.refresh());
     },
+    onShow() {
+        if (this.data.orderId) {
+            order_1.orderService.dispatchReadyOrder(this.data.orderId);
+            this.refresh();
+        }
+    },
     onUnload() {
         var _a;
         (_a = detailPageInstance.unsubscribe) === null || _a === void 0 ? void 0 : _a.call(detailPageInstance);
@@ -66,14 +77,20 @@ Page((0, page_performance_1.withPagePerformance)("delivery/detail", {
         try {
             const view = order_1.orderService.detail(this.data.orderId);
             const timeline = this.buildTimeline(view.order, view.events);
-            const stepIndex = ORDER_STEPS.findIndex((s) => s.key === view.order.status);
+            const orderSteps = ORDER_STEPS.filter((step) => (step.key !== "pending_headquarters_review" || view.order.dispatchSource === "headquarters") &&
+                (step.key !== "scheduled" || view.order.serviceTimeMode === "scheduled"));
+            const stepIndex = orderSteps.findIndex((s) => s.key === view.order.status);
             this.setData({
                 view,
                 loading: false,
+                orderSteps,
+                scheduledPickupLabel: view.order.scheduledPickupAt ? (0, clock_2.formatDateTime)(view.order.scheduledPickupAt) : "",
                 statusBadge: (0, order_2.statusBadge)(view.order.status),
-                statusHint: view.order.dispatchSource === "headquarters"
-                    ? (view.order.status === "pending_payment" ? "总部已确认可调车，完成支付后进入调度" : "总部调车申请已确认，预计时间以调度联系为准")
-                    : (0, order_2.statusHint)(view.order.status),
+                statusHint: view.order.status === "failed" && view.order.headquartersReviewReason
+                    ? `总部审核未通过：${view.order.headquartersReviewReason}`
+                    : view.order.status === "matching" && view.order.dispatchSource === "headquarters"
+                        ? "待总部协调同车型可用车辆"
+                        : (0, order_2.statusHint)(view.order.status),
                 statusIcon: STATUS_ICONS[view.order.status] || "/assets/icons/box.png",
                 statusStepIndex: stepIndex >= 0 ? stepIndex : 0,
                 timeline,
@@ -180,6 +197,8 @@ Page((0, page_performance_1.withPagePerformance)("delivery/detail", {
     },
     onAdvanceClock() {
         (0, clock_1.advanceDemoClock)(10);
+        order_1.orderService.dispatchReadyOrder(this.data.orderId);
+        this.refresh();
         wx.showToast({ title: "模拟时间 +10 分钟", icon: "none" });
     },
     onRetryPay() {

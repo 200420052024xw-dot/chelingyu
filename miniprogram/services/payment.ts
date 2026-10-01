@@ -51,7 +51,8 @@ export const paymentService = {
 
     if (payment.status === "succeeded") {
       // 标记订单 paid
-      const updated = orderService.advance({ orderId: order.id });
+      const paid = orderService.advance({ orderId: order.id });
+      const updated = paid.status === "paid" ? orderService.advance({ orderId: order.id }) : paid;
       return { payment, order: updated };
     }
     return { payment, order };

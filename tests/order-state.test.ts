@@ -26,6 +26,8 @@ function assert(cond: boolean, msg: string) {
 }
 
 console.log("\n[order-state] canTransition 合法迁移");
+assert(canTransition("pending_headquarters_review", "pending_payment"), "总部审核通过 → 待支付");
+assert(canTransition("pending_headquarters_review", "failed"), "总部审核拒绝 → 失败");
 assert(canTransition("pending_payment", "paid"), "待支付 → 已支付");
 assert(canTransition("pending_payment", "cancelled"), "待支付 → 已取消");
 assert(canTransition("paid", "matching"), "已支付 → 撮合中");
@@ -37,6 +39,7 @@ assert(canTransition("delivering", "arrived"), "运输中 → 已到达");
 assert(canTransition("arrived", "completed"), "已到达 → 已完成");
 
 console.log("\n[order-state] canTransition 非法迁移");
+assert(!canTransition("pending_headquarters_review", "paid"), "待总部审核不能直接支付");
 assert(!canTransition("pending_payment", "completed"), "待支付不可直接完成");
 assert(!canTransition("completed", "cancelled"), "已完成不可取消");
 assert(!canTransition("cancelled", "paid"), "已取消不可恢复");
@@ -60,6 +63,7 @@ assert(!isTerminal("delivering"), "delivering 非终态");
 
 console.log("\n[order-state] isUserCancelable");
 assert(isUserCancelable("pending_payment"), "待支付可取消");
+assert(isUserCancelable("pending_headquarters_review"), "待总部审核可取消");
 assert(isUserCancelable("vehicle_to_pickup"), "前往取货可取消");
 assert(!isUserCancelable("awaiting_loading"), "待装货不可取消（车已到）");
 assert(!isUserCancelable("delivering"), "运输中不可取消");
@@ -72,12 +76,13 @@ assert(isAdvanceable("paid"), "paid 可推进");
 assert(isAdvanceable("delivering"), "delivering 可推进");
 assert(isAdvanceable("arrived"), "arrived 可推进");
 assert(!isAdvanceable("pending_payment"), "pending_payment 不可推进（未支付）");
+assert(!isAdvanceable("pending_headquarters_review"), "待总部审核不可推进");
 assert(!isAdvanceable("completed"), "completed 不可推进（终态）");
 assert(!isAdvanceable("cancelled"), "cancelled 不可推进（终态）");
 
 console.log("\n[order-state] ACTIVE_STATUSES");
 const expected: OrderStatus[] = [
-  "pending_payment", "paid", "scheduled", "matching", "dispatched",
+  "pending_headquarters_review", "pending_payment", "paid", "scheduled", "matching", "dispatched",
   "vehicle_to_pickup", "awaiting_loading", "delivering", "arrived",
 ];
 assert(ACTIVE_STATUSES.length === expected.length, "活跃状态数量正确");

@@ -56,7 +56,7 @@
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 12rpx 0;
+  padding: 16rpx 0;
   border-radius: 16rpx;
   transition: background-color var(--motion-fast) var(--ease-out);
 }
@@ -77,18 +77,24 @@
   border-top: 1rpx solid var(--color-divider);
 }
 
-.address-dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  flex-shrink: 0;
+.address-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  flex: 0 0 72rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid transparent;
 }
 
-.dot-pickup { background: var(--color-pickup); }
-.dot-dropoff { background: var(--color-dropoff); }
+.pickup-icon-wrap { background: #EAF8F0; border-color: #D4F0E0; }
+.dropoff-icon-wrap { background: #FFF1EC; border-color: #FFE0D5; }
+.address-icon { width: 42rpx; height: 42rpx; }
 
 .address-info {
   flex: 1;
+  min-width: 0;
 }
 
 .address-label {
@@ -97,10 +103,26 @@
 }
 
 .address-name {
-  font-size: var(--font-body);
-  font-weight: 600;
+  font-size: 26rpx;
+  font-weight: 500;
   color: var(--color-text-strong);
+  margin-top: 8rpx;
+}
+.address-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8rpx 16rpx;
   margin-top: 4rpx;
+  color: var(--color-text-strong);
+}
+.contact-name { font-size: 30rpx; font-weight: 600; }
+.contact-phone { font-size: 26rpx; font-weight: 500; }
+.address-detail {
+  margin-top: 2rpx;
+  font-size: 24rpx;
+  color: var(--color-text-muted);
+  line-height: 1.45;
 }
 
 .address-arrow {
@@ -117,22 +139,23 @@
 .kv-row {
   display: flex;
   justify-content: space-between;
+  gap: 24rpx;
   padding: 8rpx 0;
   font-size: var(--font-body);
 }
-
 .kv-key {
+  flex: 0 0 auto;
   color: var(--color-text-muted);
   font-size: var(--font-caption);
 }
-
 .kv-val {
+  flex: 1;
+  min-width: 0;
   color: var(--color-text-strong);
   font-size: var(--font-body);
   font-weight: 500;
   text-align: right;
-  flex: 1;
-  margin-left: 24rpx;
+  overflow-wrap: anywhere;
 }
 
 /* 用车 */
@@ -189,17 +212,14 @@
   color: var(--color-text-muted);
 }
 
-.meta-icon {
-  width: 24rpx;
-  height: 24rpx;
-}
-
 /* 时间 */
 .time-row {
   display: flex;
   align-items: center;
   gap: 16rpx;
 }
+.time-row.scheduled { flex-wrap: wrap; }
+.time-row.scheduled .time-mode { width: 100%; }
 
 .time-mode {
   font-size: var(--font-body);
@@ -218,7 +238,7 @@
   display: flex;
   justify-content: space-between;
   font-size: var(--font-body);
-  padding: 8rpx 0;
+  padding: 12rpx 0;
 }
 
 .fee-label {
@@ -266,31 +286,12 @@
   flex: 1;
 }
 
+.pay-label { font-size: 22rpx; color: var(--color-text-muted); }
+
 .pay-price {
   font-size: 36rpx;
   font-weight: 700;
   color: var(--color-primary-deep);
-}
-
-.pay-toggle {
-  font-size: var(--font-caption);
-  color: var(--color-text-muted);
-  margin-top: 4rpx;
-  transition: color var(--motion-fast) var(--ease-out);
-}
-
-.pay-toggle-hover {
-  color: var(--color-primary);
-}
-
-.caret {
-  display: inline-block;
-  margin-left: 4rpx;
-  transition: transform 0.2s ease;
-}
-
-.caret.open {
-  transform: rotate(180deg);
 }
 
 .pay-btn[disabled] {

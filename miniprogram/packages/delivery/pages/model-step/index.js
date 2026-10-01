@@ -1,12 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const fleet_1 = require("../../../../services/fleet");
-const draft_1 = require("../../../../services/draft");
 const pricing_1 = require("../../../../services/pricing");
-const order_draft_1 = require("../../../../stores/order-draft");
+const booking_draft_1 = require("../../../../services/booking-draft");
 const index_1 = require("../../../../repositories/index");
 const geo_1 = require("../../../../adapters/geo");
-const pricing_2 = require("../../../../domain/pricing");
 const page_performance_1 = require("../../../../utils/page-performance");
 Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
     data: {
@@ -21,10 +19,11 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
         estimatedTotal: null,
         computing: false,
         expired: false,
+        returnToConfirm: false,
     },
     onLoad(query) {
         const draftId = query === null || query === void 0 ? void 0 : query.draftId;
-        this.setData({ draftId });
+        this.setData({ draftId, returnToConfirm: (query === null || query === void 0 ? void 0 : query.returnTo) === "confirm" });
         this.refresh();
     },
     refresh() {
@@ -34,7 +33,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
             return;
         const offers = fleet_1.fleetService.recommend({ draft });
         const recommendedList = offers.filter((o) => o.recommended);
-        const sel = offers.find((o) => o.modelId === draft.selectedVehicleModelId && o.available)
+        const sel = offers.find((o) => o.modelId === draft.selectedVehicleModelId)
             || recommendedList[0]
             || offers.find((o) => o.available)
             || null;
@@ -68,21 +67,37 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
         if (!o)
             return;
         if (!o.available) {
-            wx.showToast({
-                title: o.unavailableReasons[0] || "当前车型不可用",
-                icon: "none",
+            wx.showModal({
+                title: "车型适配提醒",
+                content: `${o.unavailableReasons.join("；") || "该车型可能不适合当前货物"}。仍要选择将提交总部审核。`,
+                cancelText: "返回重选",
+                confirmText: "仍要选择",
+                success: (result) => {
+                    if (result.confirm)
+                        this.selectOffer(o);
+                },
             });
             return;
         }
+        this.selectOffer(o);
+    },
+    selectOffer(o) {
+        const id = o.modelId;
         this.setData({ selectedModelId: id, selected: o, estimatedTotal: null, expired: false });
         this.computeQuote(id);
+    },
+    onImageTap(e) {
+        const id = e.currentTarget.dataset.id;
+        wx.navigateTo({ url: `/packages/delivery/pages/model-detail/index?modelId=${encodeURIComponent(id)}` });
     },
     computeQuote(modelId) {
         this.setData({ computing: true, expired: false });
         try {
             const draft = index_1.repo.getDraft(this.data.draftId);
-            if (!draft)
+            if (!draft) {
+                this.setData({ computing: false });
                 return;
+            }
             const q = pricing_1.pricingService.quote({ draft, modelId });
             this.setData({ estimatedTotal: q.totalAmountFen, computing: false });
         }
@@ -92,31 +107,28 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
         }
     },
     onConfirm() {
-        var _a;
         const id = this.data.selectedModelId;
         if (!id) {
             wx.showToast({ title: "请选择车型", icon: "none" });
             return;
         }
-        if (!((_a = this.data.selected) === null || _a === void 0 ? void 0 : _a.available)) {
-            wx.showToast({ title: "当前车型不可用", icon: "none" });
-            return;
-        }
         try {
             const draft = index_1.repo.getDraft(this.data.draftId);
-            if (!draft)
+            if (!draft) {
+                wx.showToast({ title: "订单已创建，请在订单列表查看", icon: "none" });
                 return;
-            // 修改草稿版本：触发报价失效
-            const updated = draft_1.draftService.update(this.data.draftId, (d) => {
+            }
+            const updated = (0, booking_draft_1.updateBookingDraft)(this.data.draftId, (d) => {
                 var _a, _b;
-                return (Object.assign(Object.assign({}, d), { selectedVehicleModelId: id, dispatchSource: (_b = (_a = this.data.selected) === null || _a === void 0 ? void 0 : _a.supplySource) !== null && _b !== void 0 ? _b : "nearby", headquartersConfirmed: false }));
+                return (Object.assign(Object.assign({}, d), { selectedVehicleModelId: id, dispatchSource: d.serviceTimeMode === "scheduled" ? "headquarters" : (_b = (_a = this.data.selected) === null || _a === void 0 ? void 0 : _a.supplySource) !== null && _b !== void 0 ? _b : "headquarters" }));
             });
-            // 重新报价
-            const q = pricing_1.pricingService.quote({ draft: updated, modelId: id });
-            // 绑定到草稿
-            const bound = draft_1.draftService.attachQuote(updated.id, q.id, (0, pricing_2.computeInputFingerprint)(updated, id));
-            order_draft_1.draftStore.set(bound);
-            wx.navigateTo({ url: `/packages/delivery/pages/confirm/index?draftId=${updated.id}` });
+            if (this.data.returnToConfirm)
+                wx.navigateBack();
+            else
+                wx.navigateTo({
+                    url: `/packages/delivery/pages/confirm/index?draftId=${updated.id}`,
+                    fail: () => wx.showToast({ title: "打开订单确认页失败，请重试", icon: "none" }),
+                });
         }
         catch (e) {
             wx.showToast({ title: e.message || "报价失败", icon: "none" });

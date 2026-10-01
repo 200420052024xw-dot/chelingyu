@@ -4,69 +4,59 @@
   <view class="card address-card">
     <view class="card-header">
       <view class="card-title">
-        <image class="title-icon" src="/assets/icons/route.png" mode="aspectFit"></image>
+        <image class="title-icon" src="/assets/icons/tabler/route.svg" mode="aspectFit"></image>
         <text>寄收件地址</text>
       </view>
       <view class="edit-link press-scale" hover-class="edit-link-hover" bindtap="onEditAddress">修改</view>
     </view>
-    <view class="address-row press-scale" hover-class="address-row-hover">
-      <view class="address-dot dot-pickup"></view>
+    <view class="address-row press-scale" hover-class="address-row-hover" data-role="sender" bindtap="onPickAddress">
+      <view class="address-icon-wrap pickup-icon-wrap">
+        <image class="address-icon" src="/assets/icons/tabler/package-export.svg" mode="aspectFit"></image>
+      </view>
       <view class="address-info">
         <view class="address-label">寄件地址</view>
-        <view class="address-name ellipsis">{{draft.sender.name}}</view>
+        <view class="address-contact"><text class="contact-name">{{draft.sender.contactName}}</text><text class="contact-phone">{{draft.sender.contactMobile}}</text></view>
+        <view class="address-name">{{draft.sender.name}}</view>
+        <view class="address-detail">{{draft.sender.detail}}</view>
       </view>
-      <view class="address-arrow press-scale" hover-class="address-arrow-hover" catchtap="onEditAddress">›</view>
+      <view class="address-arrow press-scale" hover-class="address-arrow-hover">›</view>
     </view>
-    <view class="address-row press-scale" hover-class="address-row-hover">
-      <view class="address-dot dot-dropoff"></view>
+    <view class="address-row press-scale" hover-class="address-row-hover" data-role="receiver" bindtap="onPickAddress">
+      <view class="address-icon-wrap dropoff-icon-wrap">
+        <image class="address-icon" src="/assets/icons/tabler/map-pin.svg" mode="aspectFit"></image>
+      </view>
       <view class="address-info">
         <view class="address-label">收件地址</view>
-        <view class="address-name ellipsis">{{draft.receiver.name}}</view>
+        <view class="address-contact"><text class="contact-name">{{draft.receiver.contactName}}</text><text class="contact-phone">{{draft.receiver.contactMobile}}</text></view>
+        <view class="address-name">{{draft.receiver.name}}</view>
+        <view class="address-detail">{{draft.receiver.detail}}</view>
       </view>
-      <view class="address-arrow press-scale" hover-class="address-arrow-hover" catchtap="onEditAddress">›</view>
+      <view class="address-arrow press-scale" hover-class="address-arrow-hover">›</view>
     </view>
   </view>
 
   <!-- 物品信息 -->
-  <view class="card">
+  <view class="card cargo-card">
     <view class="card-header">
       <view class="card-title">
-        <image class="title-icon cargo" src="/assets/icons/box.png" mode="aspectFit"></image>
+        <image class="title-icon cargo" src="/assets/icons/tabler/package.svg" mode="aspectFit"></image>
         <text>物品信息</text>
       </view>
       <view class="edit-link press-scale" hover-class="edit-link-hover" bindtap="onEditCargo">修改</view>
     </view>
-    <view class="kv-row">
-      <text class="kv-key">物品类型</text>
-      <text class="kv-val">{{cargoCategoryLabel}}</text>
-    </view>
-    <view class="kv-row">
-      <text class="kv-key">物品名称 / 描述</text>
-      <text class="kv-val">{{draft.cargo.description}}</text>
-    </view>
-    <view class="kv-row">
-      <text class="kv-key">数量</text>
-      <text class="kv-val">{{draft.cargo.quantity}} 件</text>
-    </view>
-    <view class="kv-row" wx:if="{{draft.cargo.unitWeightGrams !== undefined}}">
-      <text class="kv-key">单件重量</text>
-      <text class="kv-val">{{weightLabel}}</text>
-    </view>
-    <view class="kv-row" wx:if="{{draft.cargo.unitDimensionsMm}}">
-      <text class="kv-key">单件尺寸</text>
-      <text class="kv-val">{{dimLabel}}</text>
-    </view>
-    <view class="kv-row">
-      <text class="kv-key">特殊要求</text>
-      <text class="kv-val">{{specialLabel}}</text>
-    </view>
+    <view class="kv-row"><text class="kv-key">物品类型</text><text class="kv-val">{{cargoCategoryLabel}}</text></view>
+    <view class="kv-row"><text class="kv-key">物品名称 / 描述</text><text class="kv-val">{{draft.cargo.description}}</text></view>
+    <view class="kv-row"><text class="kv-key">数量</text><text class="kv-val">{{draft.cargo.quantity}} 件</text></view>
+    <view class="kv-row" wx:if="{{draft.cargo.unitWeightGrams !== undefined}}"><text class="kv-key">单件重量</text><text class="kv-val">{{weightLabel}}</text></view>
+    <view class="kv-row" wx:if="{{draft.cargo.unitDimensionsMm}}"><text class="kv-key">单件尺寸</text><text class="kv-val">{{dimLabel}}</text></view>
+    <view class="kv-row"><text class="kv-key">特殊要求</text><text class="kv-val">{{specialLabel}}</text></view>
   </view>
 
   <!-- 用车信息 -->
   <view class="card">
     <view class="card-header">
       <view class="card-title">
-        <image class="title-icon" src="/assets/icons/vehicle.png" mode="aspectFit"></image>
+        <image class="title-icon" src="/assets/icons/tabler/truck-delivery.svg" mode="aspectFit"></image>
         <text>用车信息</text>
       </view>
       <view class="edit-link press-scale" hover-class="edit-link-hover" bindtap="onEditModel">修改</view>
@@ -80,15 +70,12 @@
         </view>
         <view class="vehicle-meta">
           <view class="meta-item">
-            <image class="meta-icon" src="/assets/icons/weight.png" mode="aspectFit" />
             <text>{{modelMaxLoad}} 最大载重</text>
           </view>
           <view class="meta-item">
-            <image class="meta-icon" src="/assets/icons/box.png" mode="aspectFit" />
             <text>{{modelVolume}} 货箱容积</text>
           </view>
-          <view class="meta-item">
-            <image class="meta-icon" src="/assets/icons/battery.png" mode="aspectFit" />
+          <view class="meta-item" wx:if="{{draft.dispatchSource === 'nearby'}}">
             <text>{{modelBattery}} 当前电量</text>
           </view>
         </view>
@@ -101,38 +88,32 @@
   <view class="card">
     <view class="card-header">
       <view class="card-title">
-        <image class="title-icon time" src="/assets/icons/clock.png" mode="aspectFit"></image>
+        <image class="title-icon time" src="/assets/icons/tabler/clock-hour-4.svg" mode="aspectFit"></image>
         <text>用车时间</text>
       </view>
       <view class="edit-link press-scale" hover-class="edit-link-hover" bindtap="onEditTime">修改</view>
     </view>
-    <view class="time-row press-scale" hover-class="time-row-hover">
-      <text class="time-mode">{{draft.serviceTimeMode === 'immediate' ? '立即用车' : '预约用车'}}</text>
-      <text wx:if="{{draft.dispatchSource === 'headquarters'}}" class="time-estimate">总部调车时间以确认后的调度联系为准</text>
+    <view class="time-row press-scale {{draft.serviceTimeMode === 'scheduled' ? 'scheduled' : ''}}" hover-class="time-row-hover">
+      <text class="time-mode">{{draft.serviceTimeMode === 'immediate' ? '立即用车' : '预约用车 · ' + scheduledLabel}}</text>
+      <text wx:if="{{draft.dispatchSource === 'headquarters'}}" class="time-estimate">需总部确认</text>
       <text wx:else class="time-estimate">预计 <text class="text-primary">{{quote.estimatedArrivalMinutes}}</text> 分钟内到达</text>
       <view class="address-arrow">›</view>
     </view>
   </view>
 
-  <!-- 费用明细（展开/折叠由底部 pay-toggle 控制） -->
+  <!-- 费用明细 -->
   <view class="card">
     <view class="card-header">
       <view class="card-title">
-        <image class="title-icon" src="/assets/icons/money.png" mode="aspectFit"></image>
+        <image class="title-icon" src="/assets/icons/tabler/file-text.svg" mode="aspectFit"></image>
         <text>费用明细</text>
       </view>
-      <view class="edit-link press-scale" hover-class="edit-link-hover" bindtap="onExpandToggle">
-        <text>{{expand ? '收起' : '展开'}}</text>
-        <text class="caret {{expand ? 'open' : ''}}">▾</text>
-      </view>
     </view>
-    <block wx:if="{{expand}}">
-      <view class="fee-row" wx:for="{{quote.items}}" wx:key="type">
-        <text class="fee-label">{{item.label}}</text>
-        <text class="fee-val">{{fmt.money(item.amountFen)}}</text>
-      </view>
-      <view class="divider"></view>
-    </block>
+    <view class="fee-row" wx:for="{{quote.items}}" wx:key="type">
+      <text class="fee-label">{{item.label}}</text>
+      <text class="fee-val">{{fmt.money(item.amountFen)}}</text>
+    </view>
+    <view class="divider"></view>
     <view class="total-row">
       <text>预计费用</text>
       <text class="total-val">{{fmt.money(quote.totalAmountFen)}}</text>
@@ -142,16 +123,12 @@
   <view class="bottom-action">
     <view class="pay-bar">
       <view class="pay-info">
+        <view class="pay-label">预计费用</view>
         <view class="pay-price">{{fmt.money(quote.totalAmountFen)}}</view>
-        <view class="pay-toggle press-scale" hover-class="pay-toggle-hover" bindtap="onExpandToggle">
-          <text>{{expand ? '收起明细' : '展开明细'}}</text>
-          <text class="caret {{expand ? 'open' : ''}}">▾</text>
-        </view>
       </view>
-      <button wx:if="{{draft.dispatchSource === 'headquarters' && !headquartersConfirmed}}" class="btn-primary pay-btn" bindtap="onConfirmHeadquarters">先确认总部运力</button>
-      <button wx:else class="btn-primary pay-btn" bindtap="onConfirmAndPay" disabled="{{submitting}}">
+      <button class="btn-primary pay-btn" bindtap="onSubmitOrder" disabled="{{submitting}}">
         <text wx:if="{{submitting}}">提交中…</text>
-        <text wx:else>确认下单并支付</text>
+        <text wx:else>{{draft.dispatchSource === 'headquarters' ? '提交总部审核' : '确认下单并支付'}}</text>
       </button>
     </view>
   </view>

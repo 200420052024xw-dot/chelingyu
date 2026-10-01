@@ -2,7 +2,7 @@
   "scripts": {
     "build:miniprogram": "node scripts/generate-mock-module.js && tsc -p miniprogram/tsconfig.json && node scripts/generate-runtime-env.js",
     "test:home": "node tests/miniprogram-home-smoke.js",
-    "test": "node tests/miniprogram-module-resolution.test.js && node tests/booking-flow.test.js && ts-node --project tsconfig.test.json tests/order-state.test.ts && ts-node --project tsconfig.test.json tests/pricing.test.ts && ts-node --project tsconfig.test.json tests/revenue.test.ts",
+    "test": "node tests/miniprogram-module-resolution.test.js && node tests/scheduled-time-picker.test.js && node tests/cargo-dimensions.test.js && node tests/booking-flow.test.js && node tests/booking-navigation.test.js && ts-node --project tsconfig.test.json tests/order-state.test.ts && ts-node --project tsconfig.test.json tests/pricing.test.ts && ts-node --project tsconfig.test.json tests/revenue.test.ts",
     "test:modules": "node tests/miniprogram-module-resolution.test.js",
     "test:order": "ts-node --project tsconfig.test.json tests/order-state.test.ts",
     "test:pricing": "ts-node --project tsconfig.test.json tests/pricing.test.ts",

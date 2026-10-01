@@ -27,11 +27,8 @@
         data-value="{{item.value}}"
         bindtap="onPickCategory"
       >
-        <view class="cat-icon-wrap">
-          <text class="cat-mark">{{item.mark}}</text>
-        </view>
+        <image class="cat-icon" src="{{item.icon}}" mode="aspectFit"></image>
         <view class="cat-name">{{item.label}}</view>
-        <view class="cat-check" wx:if="{{category === item.value}}">✓</view>
       </view>
     </view>
   </view>
@@ -39,15 +36,15 @@
   <!-- 物品名称 / 描述 -->
   <view class="card">
     <view class="section-title">货物描述</view>
-    <view class="input-cell">
-      <input
+    <view class="input-cell description-cell">
+      <textarea
+        class="description-input"
         placeholder="请填写货物名称、包装方式等关键信息"
         placeholder-class="ph"
         value="{{description}}"
         maxlength="200"
         bindinput="onDescriptionInput"
-      />
-      <view class="counter">{{description.length}}/200</view>
+      ></textarea>
     </view>
   </view>
 
@@ -70,16 +67,15 @@
         </view>
       </view>
       <view class="form-cell">
-        <view class="cell-label">单件重量</view>
+        <view class="cell-label">单件重量 <text class="optional">（选填·kg）</text></view>
         <view class="input-cell small">
           <input
-            placeholder="选填"
+            placeholder="请输入"
             placeholder-class="ph"
             value="{{unitWeightKg}}"
             type="digit"
             bindinput="onWeightInput"
           />
-          <view class="cell-suffix">kg</view>
         </view>
       </view>
     </view>
@@ -87,19 +83,19 @@
 
   <!-- 体积尺寸 -->
   <view class="card">
-    <view class="cell-label">单件外包装尺寸 <text class="optional">（选填）</text></view>
+    <view class="cell-label">单件外包装尺寸 <text class="optional">（选填·米）</text></view>
     <view class="dim-row">
-      <view class="input-cell small flex-1">
-        <input placeholder="长" placeholder-class="ph" value="{{lengthMm}}" type="digit" bindinput="onLengthInput" />
-        <view class="cell-suffix">cm</view>
+      <view class="dimension-field">
+        <text class="dimension-label">长</text>
+        <view class="input-cell small"><input placeholder="请输入" placeholder-class="ph" value="{{lengthMeters}}" type="digit" bindinput="onLengthInput" /></view>
       </view>
-      <view class="input-cell small flex-1">
-        <input placeholder="宽" placeholder-class="ph" value="{{widthMm}}" type="digit" bindinput="onWidthInput" />
-        <view class="cell-suffix">cm</view>
+      <view class="dimension-field">
+        <text class="dimension-label">宽</text>
+        <view class="input-cell small"><input placeholder="请输入" placeholder-class="ph" value="{{widthMeters}}" type="digit" bindinput="onWidthInput" /></view>
       </view>
-      <view class="input-cell small flex-1">
-        <input placeholder="高" placeholder-class="ph" value="{{heightMm}}" type="digit" bindinput="onHeightInput" />
-        <view class="cell-suffix">cm</view>
+      <view class="dimension-field">
+        <text class="dimension-label">高</text>
+        <view class="input-cell small"><input placeholder="请输入" placeholder-class="ph" value="{{heightMeters}}" type="digit" bindinput="onHeightInput" /></view>
       </view>
     </view>
   </view>
@@ -109,27 +105,12 @@
     <view class="toggle-cell" bindtap="onToggleFragile">
       <view class="toggle-info">
         <view class="requirement-title">
-          <view class="requirement-mark">!</view>
+          <image class="requirement-icon" src="/assets/icons/tabler/alert-triangle.svg" mode="aspectFit"></image>
           <text class="cell-label inline-label">易碎物品</text>
         </view>
-        <view class="cell-desc">提示车辆轻拿轻放</view>
       </view>
       <view class="toggle {{fragile ? 'on' : ''}}">
         <view class="toggle-thumb"></view>
-      </view>
-    </view>
-    <view class="divider"></view>
-    <view class="handling-cell">
-      <view class="handling-head">
-        <view class="requirement-mark handling-mark">i</view>
-        <view class="handling-info">
-          <view class="cell-label">装卸方式</view>
-          <view class="cell-desc">配送服务不含人工搬运</view>
-        </view>
-      </view>
-      <view class="handling-banner">
-        <view class="handling-banner-tag">服务说明</view>
-        <view class="handling-banner-text">取件与收件时，请由现场联系人完成货物装载和卸货。</view>
       </view>
     </view>
   </view>

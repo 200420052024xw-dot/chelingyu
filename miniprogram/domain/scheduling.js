@@ -1,14 +1,31 @@
 "use strict";
 /** 调度：评估车辆可调度性，按距离/适配性排序。 */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.evaluateModelForCargo = evaluateModelForCargo;
 exports.evaluateVehicleForCargo = evaluateVehicleForCargo;
 exports.isWithinAvailability = isWithinAvailability;
 exports.buildNearbyVehicleView = buildNearbyVehicleView;
 exports.pickDispatchedVehicle = pickDispatchedVehicle;
 exports.recommendModels = recommendModels;
 const geo_1 = require("../adapters/geo");
-function evaluateVehicleForCargo(v, model, cargo) {
+function evaluateModelForCargo(model, cargo) {
     var _a;
+    const reasons = [];
+    if (!model.supportedCargoCategories.includes((_a = cargo === null || cargo === void 0 ? void 0 : cargo.category) !== null && _a !== void 0 ? _a : "general"))
+        reasons.push("该车型不支持当前货物类型");
+    if ((cargo === null || cargo === void 0 ? void 0 : cargo.category) === "fresh_cold_chain" && !model.supportsColdChain)
+        reasons.push("生鲜冷链货物需要冷藏车型");
+    if ((cargo === null || cargo === void 0 ? void 0 : cargo.unitWeightGrams) !== undefined && cargo.unitWeightGrams * cargo.quantity > model.maxLoadGrams) {
+        reasons.push("货物总重超出该车型最大载重");
+    }
+    const box = model.cargoBoxDimensionsMm;
+    if ((cargo === null || cargo === void 0 ? void 0 : cargo.unitDimensionsMm) && box && box.length > 0 && box.width > 0 && box.height > 0 &&
+        (cargo.unitDimensionsMm.length > box.length || cargo.unitDimensionsMm.width > box.width || cargo.unitDimensionsMm.height > box.height)) {
+        reasons.push("货物尺寸超过该车型货厢");
+    }
+    return { ok: reasons.length === 0, reasons };
+}
+function evaluateVehicleForCargo(v, model, cargo) {
     const reasons = [];
     if (!v.enabled)
         reasons.push("车辆已停用");
@@ -16,25 +33,7 @@ function evaluateVehicleForCargo(v, model, cargo) {
         reasons.push("车主未开启共享");
     if (!["available"].includes(v.status))
         reasons.push(`车辆状态非可用（${v.status}）`);
-    if (!model.supportedCargoCategories.includes((_a = cargo === null || cargo === void 0 ? void 0 : cargo.category) !== null && _a !== void 0 ? _a : "general")) {
-        reasons.push("当前车型不支持该货物类型");
-    }
-    if ((cargo === null || cargo === void 0 ? void 0 : cargo.category) === "fresh_cold_chain" && !model.supportsColdChain) {
-        reasons.push("该货物需要冷链车型");
-    }
-    if (cargo === null || cargo === void 0 ? void 0 : cargo.unitWeightGrams) {
-        const totalWeight = cargo.unitWeightGrams * cargo.quantity;
-        if (totalWeight > model.maxLoadGrams) {
-            reasons.push(`货物总重 ${Math.round(totalWeight / 1000)}kg 超出该车型最大载重`);
-        }
-    }
-    if ((cargo === null || cargo === void 0 ? void 0 : cargo.unitDimensionsMm) &&
-        model.cargoBoxDimensionsMm &&
-        (cargo.unitDimensionsMm.length > model.cargoBoxDimensionsMm.length ||
-            cargo.unitDimensionsMm.width > model.cargoBoxDimensionsMm.width ||
-            cargo.unitDimensionsMm.height > model.cargoBoxDimensionsMm.height)) {
-        reasons.push("货物尺寸超过该车型货厢");
-    }
+    reasons.push(...evaluateModelForCargo(model, cargo).reasons);
     if (v.batteryPercent !== undefined && v.batteryPercent < 20) {
         reasons.push("电量不足");
     }
@@ -119,6 +118,7 @@ function pickDispatchedVehicle(vehicles, models, draft, rules, now) {
 function recommendModels(models, vehicles, draft, userLocation, rules) {
     const now = new Date();
     return models.map((m) => {
+        var _a;
         const candidates = vehicles.filter((v) => v.modelId === m.id && v.enabled && v.ownerShared);
         const matched = [];
         const reasons = [];
@@ -133,10 +133,11 @@ function recommendModels(models, vehicles, draft, userLocation, rules) {
             else if (reasons.length === 0)
                 reasons.push(...c.reasons);
         }
-        const distances = matched
+        const nearest = matched
             .filter((v) => v.location)
-            .map((v) => { var _a, _b; return (0, geo_1.haversineMeters)(v.location, (_b = (_a = draft.sender) === null || _a === void 0 ? void 0 : _a.location) !== null && _b !== void 0 ? _b : userLocation); });
-        const minDist = distances.length ? Math.min(...distances) : 9999;
+            .map((vehicle) => { var _a, _b; return ({ vehicle, distance: (0, geo_1.haversineMeters)(vehicle.location, (_b = (_a = draft.sender) === null || _a === void 0 ? void 0 : _a.location) !== null && _b !== void 0 ? _b : userLocation) }); })
+            .sort((a, b) => a.distance - b.distance)[0];
+        const minDist = (_a = nearest === null || nearest === void 0 ? void 0 : nearest.distance) !== null && _a !== void 0 ? _a : 9999;
         const eta = Math.max(3, Math.round((minDist / 1000 / 30) * 60));
         const recommended = !!draft.cargo && m.supportedCargoCategories.includes(draft.cargo.category) && matched.length > 0;
         const tags = [];
@@ -155,6 +156,7 @@ function recommendModels(models, vehicles, draft, userLocation, rules) {
         return {
             model: m,
             availableCount: matched.length,
+            nearestVehicleId: nearest === null || nearest === void 0 ? void 0 : nearest.vehicle.id,
             nearestDistance: minDist,
             etaMinutes: eta,
             recommended,

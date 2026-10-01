@@ -50,7 +50,8 @@
     </view>
     <view class="card vehicle-card hq-capacity-card" wx:elif="{{view.order.dispatchSource === 'headquarters'}}">
       <view class="vehicle-name">{{view.order.vehicleSnapshot.modelName}} · 总部调车</view>
-      <view class="vehicle-no">运力已确认，具体车辆与到达时间以调度联系为准。</view>
+      <view class="vehicle-no">{{view.order.status === 'pending_headquarters_review' ? '等待总部审核，审核通过后才能支付。' : view.order.status === 'failed' ? (view.order.headquartersReviewReason || '总部审核未通过') : '已确认运力，等待分配同车型车辆。'}}</view>
+      <view class="vehicle-no" wx:if="{{scheduledPickupLabel}}">预约时间：{{scheduledPickupLabel}}</view>
     </view>
 
     <!-- 地址/货物 -->

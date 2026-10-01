@@ -4,10 +4,33 @@ const address_1 = require("../../services/address");
 const order_draft_1 = require("../../stores/order-draft");
 const local_database_1 = require("../../repositories/local-database");
 const draft_1 = require("../../services/draft");
+const booking_draft_1 = require("../../services/booking-draft");
 const index_1 = require("../../repositories/index");
 const clock_1 = require("../../adapters/clock");
 const page_performance_1 = require("../../utils/page-performance");
 const instance = {};
+const HOURS = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
+const MINUTES = Array.from({ length: 12 }, (_, slot) => String(slot * 5).padStart(2, "0"));
+function alignScheduledTime(iso) {
+    if (!iso)
+        return { date: "", time: "", iso: null, selection: [0, 0] };
+    let date = iso.substring(0, 10);
+    const hour = Number(iso.substring(11, 13));
+    const minute = Number(iso.substring(14, 16));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+        return { date: "", time: "", iso: null, selection: [0, 0] };
+    }
+    let totalMinutes = hour * 60 + Math.ceil(minute / 5) * 5;
+    if (totalMinutes === 24 * 60) {
+        const [year, month, day] = date.split("-").map(Number);
+        date = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().substring(0, 10);
+        totalMinutes = 0;
+    }
+    const alignedHour = Math.floor(totalMinutes / 60);
+    const minuteSlot = (totalMinutes % 60) / 5;
+    const time = `${HOURS[alignedHour]}:${MINUTES[minuteSlot]}`;
+    return { date, time, iso: `${date}T${time}:00+08:00`, selection: [alignedHour, minuteSlot] };
+}
 Page((0, page_performance_1.withPagePerformance)("delivery/address-step", {
     data: {
         draftId: null,
@@ -18,17 +41,25 @@ Page((0, page_performance_1.withPagePerformance)("delivery/address-step", {
         scheduledDate: "",
         scheduledTime: "",
         scheduledIso: null,
+        timeColumns: [HOURS.map((hour) => `${hour} 时`), MINUTES.map((minute) => `${minute} 分`)],
+        timeSelection: [0, 0],
         step: 1,
         totalSteps: 3,
         loading: true,
         dateMin: "",
+        returnToConfirm: false,
     },
     onLoad(query) {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d;
         const draftId = query === null || query === void 0 ? void 0 : query.draftId;
         let d = draftId ? index_1.repo.getDraft(draftId) : null;
-        if (!d)
-            d = (_a = draft_1.draftService.loadCurrent()) !== null && _a !== void 0 ? _a : null;
+        if (!d && !draftId)
+            d = draft_1.draftService.create();
+        if (!d) {
+            wx.showToast({ title: "订单草稿已失效，请重新下单", icon: "none" });
+            wx.switchTab({ url: "/pages/home/index" });
+            return;
+        }
         const list = address_1.addressService.list();
         if (d === null || d === void 0 ? void 0 : d.sender) {
             const a = list.find((x) => { var _a; return x.id === ((_a = d.sender) === null || _a === void 0 ? void 0 : _a.sourceAddressId); });
@@ -42,15 +73,18 @@ Page((0, page_performance_1.withPagePerformance)("delivery/address-step", {
         }
         const today = new Date();
         const dateMin = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const scheduled = alignScheduledTime(d === null || d === void 0 ? void 0 : d.scheduledPickupAt);
         this.setData({
-            draftId: (_b = d === null || d === void 0 ? void 0 : d.id) !== null && _b !== void 0 ? _b : null,
-            sender: (d === null || d === void 0 ? void 0 : d.sender) ? (_c = findAddr(list, d.sender)) !== null && _c !== void 0 ? _c : null : null,
-            receiver: (d === null || d === void 0 ? void 0 : d.receiver) ? (_d = findAddr(list, d.receiver)) !== null && _d !== void 0 ? _d : null : null,
+            draftId: (_a = d === null || d === void 0 ? void 0 : d.id) !== null && _a !== void 0 ? _a : null,
+            returnToConfirm: (query === null || query === void 0 ? void 0 : query.returnTo) === "confirm",
+            sender: (d === null || d === void 0 ? void 0 : d.sender) ? (_b = findAddr(list, d.sender)) !== null && _b !== void 0 ? _b : null : null,
+            receiver: (d === null || d === void 0 ? void 0 : d.receiver) ? (_c = findAddr(list, d.receiver)) !== null && _c !== void 0 ? _c : null : null,
             addresses: list,
-            serviceTimeMode: (_e = d === null || d === void 0 ? void 0 : d.serviceTimeMode) !== null && _e !== void 0 ? _e : "immediate",
-            scheduledIso: (_f = d === null || d === void 0 ? void 0 : d.scheduledPickupAt) !== null && _f !== void 0 ? _f : null,
-            scheduledDate: (d === null || d === void 0 ? void 0 : d.scheduledPickupAt) ? d.scheduledPickupAt.substring(0, 10) : "",
-            scheduledTime: (d === null || d === void 0 ? void 0 : d.scheduledPickupAt) ? d.scheduledPickupAt.substring(11, 16) : "",
+            serviceTimeMode: (_d = d === null || d === void 0 ? void 0 : d.serviceTimeMode) !== null && _d !== void 0 ? _d : "immediate",
+            scheduledIso: scheduled.iso,
+            scheduledDate: scheduled.date,
+            scheduledTime: scheduled.time,
+            timeSelection: scheduled.selection,
             dateMin,
             loading: false,
         });
@@ -59,8 +93,14 @@ Page((0, page_performance_1.withPagePerformance)("delivery/address-step", {
         });
     },
     onUnload() {
-        var _a;
+        var _a, _b;
         (_a = instance.unsubscribe) === null || _a === void 0 ? void 0 : _a.call(instance);
+        if (!this.data.returnToConfirm && this.data.draftId) {
+            if (index_1.repo.getDraft(this.data.draftId))
+                draft_1.draftService.remove(this.data.draftId);
+            if (((_b = order_draft_1.draftStore.get()) === null || _b === void 0 ? void 0 : _b.id) === this.data.draftId)
+                order_draft_1.draftStore.clear();
+        }
     },
     onPickSender(e) {
         wx.navigateTo({
@@ -87,7 +127,11 @@ Page((0, page_performance_1.withPagePerformance)("delivery/address-step", {
         this.refreshScheduledIso();
     },
     onPickTime(e) {
-        this.setData({ scheduledTime: e.detail.value });
+        const [hour, minuteSlot] = e.detail.value;
+        this.setData({
+            scheduledTime: `${HOURS[hour]}:${MINUTES[minuteSlot]}`,
+            timeSelection: [hour, minuteSlot],
+        });
         this.refreshScheduledIso();
     },
     refreshScheduledIso() {
@@ -119,12 +163,22 @@ Page((0, page_performance_1.withPagePerformance)("delivery/address-step", {
             serviceTimeMode: this.data.serviceTimeMode,
             scheduledPickupAt: this.data.serviceTimeMode === "scheduled" ? (_a = this.data.scheduledIso) !== null && _a !== void 0 ? _a : undefined : undefined,
         };
-        const draft = this.data.draftId
-            ? draft_1.draftService.update(this.data.draftId, (current) => (Object.assign(Object.assign({}, current), draftValues)))
-            : draft_1.draftService.create(draftValues);
-        this.setData({ draftId: draft.id });
-        order_draft_1.draftStore.set(draft);
-        wx.navigateTo({ url: `/packages/delivery/pages/cargo-step/index?draftId=${draft.id}` });
+        try {
+            if (this.data.returnToConfirm && this.data.draftId) {
+                (0, booking_draft_1.updateBookingDraft)(this.data.draftId, (current) => (Object.assign(Object.assign({}, current), draftValues)));
+                wx.navigateBack();
+                return;
+            }
+            const draft = this.data.draftId
+                ? draft_1.draftService.update(this.data.draftId, (current) => (Object.assign(Object.assign({}, current), draftValues)))
+                : draft_1.draftService.create(draftValues);
+            this.setData({ draftId: draft.id });
+            order_draft_1.draftStore.set(draft);
+            wx.navigateTo({ url: `/packages/delivery/pages/cargo-step/index?draftId=${draft.id}` });
+        }
+        catch (error) {
+            wx.showToast({ title: (error === null || error === void 0 ? void 0 : error.message) || "报价更新失败", icon: "none" });
+        }
     },
     formatTimeLabel(iso) {
         if (!iso)

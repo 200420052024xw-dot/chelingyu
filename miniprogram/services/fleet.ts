@@ -12,6 +12,7 @@ import type {
 import { repo } from "../repositories/index";
 import {
   buildNearbyVehicleView,
+  evaluateModelForCargo,
   recommendModels,
 } from "../domain/scheduling";
 import { sessionStore } from "../stores/session";
@@ -61,24 +62,16 @@ export const fleetService = {
   recommend(input: { draft: OrderDraft; userLocation?: GeoPoint }): ModelOfferView[] {
     const models = repo.listVehicleModels();
     const vehicles = repo.listVehicles();
-    const firstVehicleByModel = new Map<string, Vehicle>();
-    vehicles.forEach((vehicle) => {
-      if (!firstVehicleByModel.has(vehicle.modelId)) firstVehicleByModel.set(vehicle.modelId, vehicle);
-    });
     const rules = new Map(repo.listAvailabilityRules().map((r) => [r.vehicleId, r]));
     const userLoc = input.userLocation || locationAdapter.getUserLocation();
 
     const recs = recommendModels(models, vehicles, input.draft, userLoc, rules);
     return recs.map((r) => {
-      const cargo = input.draft.cargo;
       const model = r.model;
-      const reasons: string[] = [];
-      if (!model.supportedCargoCategories.includes(cargo?.category ?? "general")) reasons.push("该车型不支持当前货物类型");
-      if (cargo?.category === "fresh_cold_chain" && !model.supportsColdChain) reasons.push("生鲜冷链货物需要冷藏车型");
-      if (cargo?.unitWeightGrams !== undefined && cargo.unitWeightGrams * cargo.quantity > model.maxLoadGrams) reasons.push("货物总重超出该车型最大载重");
-      if (cargo?.unitDimensionsMm && model.cargoBoxDimensionsMm && (cargo.unitDimensionsMm.length > model.cargoBoxDimensionsMm.length || cargo.unitDimensionsMm.width > model.cargoBoxDimensionsMm.width || cargo.unitDimensionsMm.height > model.cargoBoxDimensionsMm.height)) reasons.push("货物尺寸超过该车型货厢");
+      const reasons = evaluateModelForCargo(model, input.draft.cargo).reasons;
       const compatible = reasons.length === 0;
-      const supplySource = r.available ? "nearby" : compatible ? "headquarters" : undefined;
+      const supplySource = input.draft.serviceTimeMode === "scheduled" || !compatible || !r.available || !r.nearestVehicleId
+        ? "headquarters" : "nearby";
       return ({
       modelId: r.model.id,
       modelName: r.model.name,
@@ -86,14 +79,15 @@ export const fleetService = {
       category: r.model.category,
       maxLoadGrams: r.model.maxLoadGrams,
       cargoVolumeLiters: r.model.cargoVolumeLiters,
+      cargoBoxDimensionsMm: r.model.cargoBoxDimensionsMm?.length ? r.model.cargoBoxDimensionsMm : undefined,
       availableCount: r.availableCount,
       distanceMeters: r.nearestDistance === 9999 ? 0 : r.nearestDistance,
       estimatedArrivalMinutes: r.available ? r.etaMinutes : 0,
-      batteryPercent: firstVehicleByModel.get(r.model.id)?.batteryPercent,
+      batteryPercent: supplySource === "nearby" ? vehicles.find((vehicle) => vehicle.id === r.nearestVehicleId)?.batteryPercent : undefined,
       recommended: r.recommended || compatible,
       available: r.available || compatible,
       unavailableReasons: compatible ? [] : (reasons.length ? reasons : r.unavailableReasons),
-      tags: Array.from(new Set([...r.tags, ...(supplySource === "headquarters" ? ["总部确认调车"] : [])])),
+      tags: r.tags.filter((tag) => tag !== "适合当前物品"),
       supplySource,
     });
     });

@@ -19,26 +19,38 @@
   <!-- 寄件地址 -->
   <view class="address-card" bindtap="onPickSender">
     <view class="address-row">
-      <view class="address-dot dot-pickup"></view>
+      <view class="address-icon-wrap pickup-icon-wrap">
+        <image class="address-icon" src="/assets/icons/tabler/package-export.svg" mode="aspectFit"></image>
+      </view>
       <view class="address-info">
         <view class="address-label">寄件地址</view>
-        <view class="address-name">{{sender ? sender.name : '从哪里寄出？'}}</view>
-        <view class="address-detail" wx:if="{{sender}}">{{sender.detail}}</view>
+        <block wx:if="{{sender}}">
+          <view class="address-contact"><text class="contact-name">{{sender.contactName}}</text><text class="contact-phone">{{sender.contactMobile}}</text></view>
+          <view class="address-name">{{sender.name}}</view>
+          <view class="address-detail">{{sender.detail}}</view>
+        </block>
+        <view class="address-placeholder" wx:else>从哪里寄出？</view>
       </view>
-      <view class="address-action">{{sender ? '更换' : '选择'}}</view>
+      <view class="address-action"><text>{{sender ? '更换' : '选择'}}</text><image class="address-action-arrow" src="/assets/icons/tabler/chevron-right.svg" mode="aspectFit"></image></view>
     </view>
   </view>
 
   <!-- 收件地址 -->
   <view class="address-card" bindtap="onPickReceiver">
     <view class="address-row">
-      <view class="address-dot dot-dropoff"></view>
+      <view class="address-icon-wrap dropoff-icon-wrap">
+        <image class="address-icon" src="/assets/icons/tabler/map-pin.svg" mode="aspectFit"></image>
+      </view>
       <view class="address-info">
         <view class="address-label">收件地址</view>
-        <view class="address-name">{{receiver ? receiver.name : '送到哪里？'}}</view>
-        <view class="address-detail" wx:if="{{receiver}}">{{receiver.detail}}</view>
+        <block wx:if="{{receiver}}">
+          <view class="address-contact"><text class="contact-name">{{receiver.contactName}}</text><text class="contact-phone">{{receiver.contactMobile}}</text></view>
+          <view class="address-name">{{receiver.name}}</view>
+          <view class="address-detail">{{receiver.detail}}</view>
+        </block>
+        <view class="address-placeholder" wx:else>送到哪里？</view>
       </view>
-      <view class="address-action">{{receiver ? '更换' : '选择'}}</view>
+      <view class="address-action"><text>{{receiver ? '更换' : '选择'}}</text><image class="address-action-arrow" src="/assets/icons/tabler/chevron-right.svg" mode="aspectFit"></image></view>
     </view>
   </view>
 
@@ -46,7 +58,7 @@
   <!-- 用车时间 -->
   <view class="time-card">
     <view class="time-header">
-      <image class="time-icon" src="/assets/icons/clock.png" mode="aspectFit" />
+      <view class="time-header-icon"><image class="time-icon" src="/assets/icons/tabler/clock-hour-4.svg" mode="aspectFit" /></view>
       <text class="time-title">用车时间</text>
     </view>
     <view class="time-modes">
@@ -55,6 +67,7 @@
         data-mode="immediate"
         bindtap="onSelectTimeMode"
       >
+        <image class="time-mode-icon" src="/assets/icons/tabler/truck-delivery.svg" mode="aspectFit"></image>
         <view class="time-mode-name">立即用车</view>
       </view>
       <view
@@ -62,6 +75,7 @@
         data-mode="scheduled"
         bindtap="onSelectTimeMode"
       >
+        <image class="time-mode-icon" src="/assets/icons/tabler/calendar-event.svg" mode="aspectFit"></image>
         <view class="time-mode-name">预约用车</view>
       </view>
     </view>
@@ -69,21 +83,21 @@
     <block wx:if="{{serviceTimeMode === 'scheduled'}}">
       <picker mode="date" value="{{scheduledDate}}" start="{{dateMin}}" bindchange="onPickDate" class="time-picker">
         <view class="picker-cell">
-          <text class="picker-label">日期</text>
-          <text class="picker-value">{{scheduledDate || '请选择日期'}}</text>
+          <view class="picker-label-group"><image class="picker-icon" src="/assets/icons/tabler/calendar-event.svg" mode="aspectFit"></image><text class="picker-label">日期</text></view>
+          <view class="picker-end"><text class="picker-value">{{scheduledDate || '请选择日期'}}</text><image class="picker-arrow" src="/assets/icons/tabler/chevron-right.svg" mode="aspectFit"></image></view>
         </view>
       </picker>
-      <picker mode="time" value="{{scheduledTime}}" bindchange="onPickTime" class="time-picker">
+      <picker mode="multiSelector" range="{{timeColumns}}" value="{{timeSelection}}" bindchange="onPickTime" class="time-picker">
         <view class="picker-cell">
-          <text class="picker-label">时间</text>
-          <text class="picker-value">{{scheduledTime || '请选择时间'}}</text>
+          <view class="picker-label-group"><image class="picker-icon" src="/assets/icons/tabler/clock-hour-4.svg" mode="aspectFit"></image><text class="picker-label">时间</text></view>
+          <view class="picker-end"><text class="picker-value">{{scheduledTime || '请选择时间'}}</text><image class="picker-arrow" src="/assets/icons/tabler/chevron-right.svg" mode="aspectFit"></image></view>
         </view>
       </picker>
     </block>
 
     <block wx:else>
       <view class="time-hint">
-        <image class="lightning" src="/assets/icons/route.png" mode="aspectFit"></image>
+        <image class="lightning" src="/assets/icons/tabler/route.svg" mode="aspectFit"></image>
         <text class="hint-text">优先匹配附近共享车辆；如无本地运力，可申请总部调车并先确认运力再支付</text>
       </view>
     </block>

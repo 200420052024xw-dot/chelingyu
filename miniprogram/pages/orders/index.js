@@ -14,6 +14,7 @@ Page((0, page_performance_1.withPagePerformance)("orders", {
         tabs: [
             { key: "all", label: "全部" },
             { key: "active", label: "进行中" },
+            { key: "pending_headquarters_review", label: "待审核" },
             { key: "pending_payment", label: "待支付" },
             { key: "completed", label: "已完成" },
             { key: "cancelled", label: "已取消" },
@@ -22,6 +23,13 @@ Page((0, page_performance_1.withPagePerformance)("orders", {
     onLoad() {
         this.refresh();
         instance.unsubscribe = (0, local_database_1.subscribeDB)(() => this.refresh());
+    },
+    onShow() {
+        order_1.orderService.list({ status: "active" }).forEach((order) => {
+            if (order.serviceTimeMode === "scheduled" || order.dispatchSource === "headquarters")
+                order_1.orderService.dispatchReadyOrder(order.id);
+        });
+        this.refresh();
     },
     onUnload() {
         var _a;
@@ -39,7 +47,7 @@ Page((0, page_performance_1.withPagePerformance)("orders", {
             sender: o.sender.name,
             receiver: o.receiver.name,
             vehicleModelName: o.vehicleSnapshot.modelName,
-            dispatchSourceLabel: o.dispatchSource === "headquarters" ? "总部调车" : "附近演示运力",
+            dispatchSourceLabel: o.dispatchSource === "headquarters" ? "总部调车" : "附近车辆",
         }));
         this.setData({ list, loading: false });
     },

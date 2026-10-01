@@ -1,12 +1,13 @@
-import type { DeliveryOrder, OrderDraft, PricingPolicy, Quote } from "../../../../contracts/types";
+import type { Address, DeliveryAddressSnapshot, OrderDraft, PricingPolicy, Quote } from "../../../../contracts/types";
 import { repo } from "../../../../repositories/index";
 import { pricingService, PricingError } from "../../../../services/pricing";
-import { orderService, OrderError } from "../../../../services/order";
+import { orderService } from "../../../../services/order";
 import { paymentService } from "../../../../services/payment";
+import { updateBookingDraft } from "../../../../services/booking-draft";
 import { draftStore } from "../../../../stores/order-draft";
 import { identity } from "../../../../adapters/identity";
 import { formatMoneyFen } from "../../../../view-models/order";
-import { formatTime } from "../../../../adapters/clock";
+import { formatDateTime, formatTime } from "../../../../adapters/clock";
 import { CARGO_LABELS } from "../../../../view-models/cargo";
 import { withPagePerformance } from "../../../../utils/page-performance";
 
@@ -17,7 +18,6 @@ interface PageData {
   draft: OrderDraft | null;
   quote: Quote | null;
   policy: PricingPolicy | null;
-  expand: boolean;
   payModalOpen: boolean;
   payProcessing: boolean;
   createdOrderId: string | null;
@@ -32,7 +32,7 @@ interface PageData {
   modelMaxLoad: string;
   modelVolume: string;
   modelBattery: string;
-  headquartersConfirmed: boolean;
+  scheduledLabel: string;
 }
 
 Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
@@ -43,7 +43,6 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
     draft: null,
     quote: null,
     policy: null,
-    expand: false,
     payModalOpen: false,
     payProcessing: false,
     createdOrderId: null,
@@ -57,10 +56,11 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
     modelMaxLoad: "",
     modelVolume: "",
     modelBattery: "",
-    headquartersConfirmed: false,
+    scheduledLabel: "",
   },
 
   onLoad(query) {
+    this._unloaded = false;
     const draftId = query?.draftId as string;
     this.setData({ draftId });
     this.refresh();
@@ -73,6 +73,10 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
       return;
     }
     if (this.data.draftId && !this.data.createdOrderId) this.refresh();
+  },
+
+  onUnload() {
+    this._unloaded = true;
   },
 
   refresh() {
@@ -100,7 +104,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
       ? `${(draft.cargo.unitWeightGrams / 1000).toFixed(1)} kg`
       : "";
     const dimLabel = draft.cargo?.unitDimensionsMm
-      ? `${draft.cargo.unitDimensionsMm.length} × ${draft.cargo.unitDimensionsMm.width} × ${draft.cargo.unitDimensionsMm.height} mm`
+      ? `${draft.cargo.unitDimensionsMm.length / 1000} × ${draft.cargo.unitDimensionsMm.width / 1000} × ${draft.cargo.unitDimensionsMm.height / 1000} 米`
       : "";
     const tags: string[] = [];
     if (draft.cargo?.fragile) tags.push("易碎");
@@ -117,40 +121,63 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
       specialLabel,
       vehicleImage: model?.imageUrl ?? "/assets/vehicles/box-small.png",
       modelName: model?.name ?? "",
-      modelTags: model?.category === "cold_chain" ? ["冷藏保鲜", "温控运输"] : model?.category === "box_medium" ? ["空间更大", "适合大件"] : ["适合当前物品", "性价比高"],
+      modelTags: draft.dispatchSource === "headquarters" ? ["需总部确认"] : model?.category === "cold_chain" ? ["冷藏保鲜", "温控运输"] : model?.category === "box_medium" ? ["空间更大", "适合大件"] : ["适合当前货物", "性价比高"],
       modelMaxLoad: model ? `${model.maxLoadGrams / 1000} kg` : "",
       modelVolume: model ? (model.cargoVolumeLiters >= 1000 ? `${(model.cargoVolumeLiters / 1000).toFixed(1)} m³` : `${model.cargoVolumeLiters} L`) : "",
       modelBattery: quote.vehicleId ? `${repo.getVehicle(quote.vehicleId)?.batteryPercent ?? 0}%` : "—",
-      headquartersConfirmed: draft.headquartersConfirmed === true,
+      scheduledLabel: draft.scheduledPickupAt ? formatDateTime(draft.scheduledPickupAt) : "",
     });
   },
 
-  onExpandToggle() {
-    this.setData({ expand: !this.data.expand });
+  onEditAddress() {
+    wx.showActionSheet({
+      itemList: ["更改寄件地址", "更改收件地址"],
+      success: (result) => this.openAddressPicker(result.tapIndex === 0 ? "sender" : "receiver"),
+    });
   },
 
-  onEditAddress() {
-    wx.navigateTo({ url: `/pages/address-step/index?draftId=${this.data.draftId}` });
+  onPickAddress(e: any) {
+    this.openAddressPicker(e.currentTarget.dataset.role === "receiver" ? "receiver" : "sender");
+  },
+
+  openAddressPicker(role: "sender" | "receiver") {
+    wx.navigateTo({
+      url: `/packages/delivery/pages/addresses/index?mode=select&role=${role}`,
+      success: (result) => result.eventChannel.on("addressSelected", (payload: { address: Address }) => {
+        const address = payload.address;
+        const snapshot: DeliveryAddressSnapshot = {
+          sourceAddressId: address.id,
+          name: address.name,
+          contactName: address.contactName,
+          contactMobile: address.contactMobile,
+          regionCode: address.regionCode,
+          detail: address.detail,
+          location: address.location,
+        };
+        try {
+          updateBookingDraft(this.data.draftId, (draft) => ({ ...draft, [role]: snapshot }));
+          this.refresh();
+        } catch (error: any) {
+          wx.showToast({ title: error?.message || "地址更新失败", icon: "none" });
+        }
+      }),
+    });
   },
 
   onEditCargo() {
-    wx.navigateTo({ url: `/packages/delivery/pages/cargo-step/index?draftId=${this.data.draftId}` });
+    wx.navigateTo({ url: `/packages/delivery/pages/cargo-step/index?draftId=${this.data.draftId}&returnTo=confirm` });
   },
 
   onEditModel() {
-    wx.navigateTo({ url: `/packages/delivery/pages/model-step/index?draftId=${this.data.draftId}` });
+    wx.navigateTo({ url: `/packages/delivery/pages/model-step/index?draftId=${this.data.draftId}&returnTo=confirm` });
   },
 
   onEditTime() {
-    wx.navigateTo({ url: `/pages/address-step/index?draftId=${this.data.draftId}` });
+    wx.navigateTo({ url: `/pages/address-step/index?draftId=${this.data.draftId}&returnTo=confirm` });
   },
 
-  onConfirmAndPay() {
+  onSubmitOrder() {
     if (this.data.submitting) return;
-    if (this.data.draft?.dispatchSource === "headquarters" && !this.data.headquartersConfirmed) {
-      wx.showToast({ title: "请先确认总部调车运力", icon: "none" });
-      return;
-    }
     this.setData({ submitting: true });
     try {
       const draft = repo.getDraft(this.data.draftId);
@@ -166,6 +193,11 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
         requestId: identity.newRequestId(),
       });
       draftStore.clear();
+      if (order.status === "pending_headquarters_review") {
+        this.setData({ createdOrderId: order.id, submitting: false });
+        this.openCreatedOrder(order.id);
+        return;
+      }
       this.setData({
         createdOrderId: order.id,
         submitting: false,
@@ -183,28 +215,16 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
     }
   },
 
-  onConfirmHeadquarters() {
-    const draft = repo.getDraft(this.data.draftId);
-    if (!draft || draft.dispatchSource !== "headquarters") return;
-    wx.showModal({
-      title: "总部运力确认",
-      content: "演示流程将提交总部调车申请。确认后再进入支付；实际到达时间以调度联系为准。",
-      confirmText: "确认有车可调",
-      success: (res) => {
-        if (!res.confirm) return;
-        const confirmed = { ...draft, headquartersConfirmed: true, updatedAt: new Date().toISOString() };
-        repo.upsertDraft(confirmed);
-        this.setData({ draft: confirmed, headquartersConfirmed: true });
-      },
-    });
-  },
-
   onClosePay() {
     if (this.data.payProcessing) return;
     this.setData({ payModalOpen: false });
     if (this.data.createdOrderId) {
-      wx.redirectTo({ url: `/packages/delivery/pages/detail/index?id=${this.data.createdOrderId}` });
+      this.openCreatedOrder(this.data.createdOrderId);
     }
+  },
+
+  openCreatedOrder(orderId: string) {
+    wx.redirectTo({ url: `/packages/delivery/pages/detail/index?id=${orderId}` });
   },
 
   onSimulateSuccess() {
@@ -224,18 +244,21 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
   runPayment(orderId: string, scenario: "success" | "fail") {
     this.setData({ payProcessing: true });
     setTimeout(() => {
+      if (this._unloaded) return;
       try {
         if (scenario === "success") {
           paymentService.payMock({ orderId, requestId: identity.newRequestId(), scenario: "success" });
           this.setData({ payProcessing: false, payModalOpen: false, submitting: false });
           setTimeout(() => {
-            wx.redirectTo({ url: `/packages/delivery/pages/detail/index?id=${orderId}` });
+            if (!this._unloaded) this.openCreatedOrder(orderId);
           }, 400);
         } else {
           paymentService.payMock({ orderId, requestId: identity.newRequestId(), scenario: "fail" });
           this.setData({ payProcessing: false, payModalOpen: false, submitting: false });
           wx.showToast({ title: "模拟支付失败，可在订单详情重试", icon: "none" });
-          setTimeout(() => wx.redirectTo({ url: `/packages/delivery/pages/detail/index?id=${orderId}` }), 800);
+          setTimeout(() => {
+            if (!this._unloaded) this.openCreatedOrder(orderId);
+          }, 800);
         }
       } catch (e: any) {
         this.setData({ payProcessing: false });

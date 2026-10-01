@@ -19,6 +19,7 @@ export function formatMoneyFenShort(fen: MoneyFen): string {
 
 export function statusBadge(status: OrderStatus): OrderStatusBadge {
   switch (status) {
+    case "pending_headquarters_review": return { text: "待总部审核", tone: "warning" };
     case "pending_payment": return { text: "待支付", tone: "warning" };
     case "paid": return { text: "待匹配", tone: "info" };
     case "scheduled": return { text: "已预约", tone: "info" };
@@ -37,6 +38,7 @@ export function statusBadge(status: OrderStatus): OrderStatusBadge {
 
 export function statusHint(status: OrderStatus): string {
   switch (status) {
+    case "pending_headquarters_review": return "申请已提交，等待总部审核后再支付";
     case "pending_payment": return "请尽快完成支付";
     case "paid": return "系统正在匹配车辆";
     case "scheduled": return "已预约，等待到达预约时间";
@@ -55,6 +57,7 @@ export function statusHint(status: OrderStatus): string {
 
 export function timelineEventLabel(e: OrderStatusEvent): string {
   switch (e.toStatus) {
+    case "pending_headquarters_review": return "已提交总部审核";
     case "pending_payment": return "已创建订单";
     case "paid": return "支付成功";
     case "scheduled": return "已生成预约";

@@ -220,7 +220,7 @@ export function applyUserMockData(db: LocalDatabase): LocalDatabase {
       imageUrl: m.imagePath,
       maxLoadGrams: m.maxLoadGrams,
       cargoVolumeLiters: m.cargoVolumeLiters,
-      cargoBoxDimensionsMm: { length: 0, width: 0, height: 0 },
+      cargoBoxDimensionsMm: undefined,
       energyType: "electric" as EnergyType,
       supportsColdChain: m.supportsColdChain,
       supportedCargoCategories: ["general", "document", "food", "medical", "other"] as CargoCategory[],
