@@ -2,7 +2,6 @@
   <view class="hero">
     <view class="eyebrow">附近运力 · 模拟展示</view>
     <view class="hero-title">{{title}}</view>
-    <view class="hero-note">以「{{anchorLabel}}」为中心，展示本次打开首页生成的车辆。</view>
     <view class="summary">
       <view class="summary-icon"><image src="/assets/icons/home-status.png" mode="aspectFit"></image></view>
       <view class="summary-copy">
@@ -12,7 +11,6 @@
     </view>
   </view>
 
-  <view class="section-heading">{{mode === 'status' ? '逐车服务状态' : '车型与位置'}}</view>
   <view class="vehicle-list">
     <view class="vehicle-card" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}" bindtap="onOpenVehicle">
       <image class="vehicle-image" src="/assets/vehicles/delivery-pod.png" mode="aspectFit"></image>

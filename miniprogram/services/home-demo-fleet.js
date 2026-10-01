@@ -34,6 +34,7 @@ exports.homeDemoFleet = {
                 locationText: `${directionFor(angle)}侧约 ${distanceMeters} 米`,
                 status: random() < 0.75 ? "可立即接单" : "附近待命中",
                 etaMinutes: 3 + Math.ceil(distanceMeters / 300),
+                batteryPercent: 55 + Math.floor(random() * 44),
             };
         });
         snapshot = { anchor, anchorLabel, vehicles };

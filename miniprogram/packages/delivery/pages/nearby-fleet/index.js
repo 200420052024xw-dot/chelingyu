@@ -6,7 +6,6 @@ Page({
     data: {
         mode: "vehicles",
         title: "附近可用车辆",
-        anchorLabel: "演示区域",
         count: 0,
         rows: [],
     },
@@ -19,7 +18,6 @@ Page({
         this.setData({
             mode,
             title,
-            anchorLabel: snapshot.anchorLabel,
             count: snapshot.vehicles.length,
             rows: snapshot.vehicles.map((vehicle) => (Object.assign(Object.assign({}, vehicle), { coordinateText: `${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)}` }))),
         });

@@ -5,7 +5,6 @@ interface VehicleRow extends HomeDemoVehicle { coordinateText: string }
 interface PageData {
   mode: "vehicles" | "status";
   title: string;
-  anchorLabel: string;
   count: number;
   rows: VehicleRow[];
 }
@@ -14,7 +13,6 @@ Page<PageData, any>({
   data: {
     mode: "vehicles",
     title: "附近可用车辆",
-    anchorLabel: "演示区域",
     count: 0,
     rows: [],
   },
@@ -28,7 +26,6 @@ Page<PageData, any>({
     this.setData({
       mode,
       title,
-      anchorLabel: snapshot.anchorLabel,
       count: snapshot.vehicles.length,
       rows: snapshot.vehicles.map((vehicle) => ({
         ...vehicle,

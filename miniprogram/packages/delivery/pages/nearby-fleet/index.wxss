@@ -1,14 +1,13 @@
 .fleet-page { min-height: 100vh; box-sizing: border-box; padding: 28rpx 30rpx 48rpx; background: #f5f9f7; }
-.hero { padding: 32rpx 30rpx 28rpx; border-radius: 32rpx; background: linear-gradient(145deg, #ffffff, #ecf9f2); }
+.hero { padding: 32rpx 30rpx 30rpx; border-radius: 32rpx; background: linear-gradient(145deg, #ffffff, #ecf9f2); }
 .eyebrow { color: #089b69; font-size: 21rpx; font-weight: 700; }
-.hero-title { margin-top: 12rpx; color: #12283a; font-size: 42rpx; font-weight: 750; }
-.hero-note { margin-top: 10rpx; color: #73838b; font-size: 23rpx; line-height: 1.45; }
-.summary { display: flex; align-items: center; gap: 18rpx; margin-top: 26rpx; padding: 20rpx; border-radius: 24rpx; background: rgba(214, 246, 229, 0.8); }
-.summary-icon { display: flex; align-items: center; justify-content: center; width: 66rpx; height: 66rpx; border-radius: 50%; background: #c8f2dd; }
-.summary-icon image { width: 44rpx; height: 44rpx; }
-.summary-title { color: #18362b; font-size: 27rpx; font-weight: 700; }
-.summary-detail { margin-top: 5rpx; color: #567168; font-size: 22rpx; }
-.section-heading { margin: 32rpx 4rpx 18rpx; color: #183144; font-size: 30rpx; font-weight: 700; }
+.hero-title { margin-top: 12rpx; color: #12283a; font-size: 48rpx; font-weight: 750; }
+.summary { display: flex; align-items: center; gap: 20rpx; margin-top: 18rpx; padding: 26rpx; border-radius: 26rpx; background: rgba(214, 246, 229, 0.88); }
+.summary-icon { display: flex; align-items: center; justify-content: center; width: 74rpx; height: 74rpx; flex: 0 0 74rpx; border-radius: 50%; background: #c8f2dd; }
+.summary-icon image { width: 48rpx; height: 48rpx; }
+.summary-title { color: #18362b; font-size: 30rpx; font-weight: 700; }
+.summary-detail { margin-top: 6rpx; color: #567168; font-size: 24rpx; }
+.vehicle-list { margin-top: 18rpx; }
 .vehicle-card { display: flex; align-items: center; gap: 12rpx; margin-bottom: 16rpx; padding: 18rpx 18rpx 18rpx 10rpx; border-radius: 26rpx; background: #fff; box-shadow: 0 8rpx 30rpx rgba(23, 66, 47, 0.06); }
 .vehicle-card:active { background: #f0faf5; }
 .vehicle-image { width: 120rpx; height: 120rpx; flex: 0 0 120rpx; }

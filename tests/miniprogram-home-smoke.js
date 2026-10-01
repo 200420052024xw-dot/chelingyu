@@ -211,5 +211,9 @@ setTimeout(async () => {
   assert.equal(vehiclePage.data.found, true);
   assert.equal(vehiclePage.data.modelName, fleetPage.data.rows[0].modelName);
   assert.equal(vehiclePage.data.markers[0].latitude, fleetPage.data.rows[0].latitude);
+  assert.ok(vehiclePage.data.batteryPercent >= 55 && vehiclePage.data.batteryPercent <= 98);
+  assert.equal(vehiclePage.data.batteryPercent, currentSnapshot.vehicles[0].batteryPercent);
+  assert.match(vehiclePage.data.rangeText, /km$/);
+  assert.match(vehiclePage.data.speedText, /km\/h$/);
   console.log("[home-smoke] random fleet count, list and detail routes, map recenter, place selection and support");
 }, 0);

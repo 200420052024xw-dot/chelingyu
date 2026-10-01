@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const vehicle_products_1 = require("../../../../content/vehicle-products");
+const vehicle_performance_1 = require("../../../../content/vehicle-performance");
 const home_demo_fleet_1 = require("../../../../services/home-demo-fleet");
 Page({
     data: {
@@ -10,12 +11,14 @@ Page({
         description: "",
         status: "",
         locationText: "",
-        coordinateText: "",
+        batteryPercent: 0,
         etaMinutes: 0,
         loadText: "",
         volumeText: "",
         sizeText: "",
-        coldText: "",
+        rangeText: "",
+        speedText: "",
+        temperatureText: "",
         latitude: 0,
         longitude: 0,
         markers: [],
@@ -25,6 +28,7 @@ Page({
         const model = vehicle && vehicle_products_1.VEHICLE_CATALOG.find((item) => item.id === vehicle.modelId);
         if (!vehicle || !model)
             return;
+        const performance = vehicle_performance_1.VEHICLE_PERFORMANCE[model.id];
         wx.setNavigationBarTitle({ title: model.name });
         this.setData({
             found: true,
@@ -33,12 +37,16 @@ Page({
             description: model.description,
             status: vehicle.status,
             locationText: vehicle.locationText,
-            coordinateText: `${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)}`,
+            batteryPercent: vehicle.batteryPercent,
             etaMinutes: vehicle.etaMinutes,
             loadText: `${model.loadKg} kg`,
-            volumeText: `${model.volumeLiters} L`,
+            volumeText: model.id === "z5-multi"
+                ? "3.0 m³（6 格）"
+                : `${(model.volumeLiters / 1000).toFixed(1)} m³`,
             sizeText: `${model.dimensions.length} × ${model.dimensions.width} × ${model.dimensions.height} mm`,
-            coldText: model.cold ? "支持冷链" : "常温配送",
+            rangeText: performance ? `${performance.rangeKm} km` : "以实际车型为准",
+            speedText: performance ? `${performance.speedKmh} km/h` : "以实际车型为准",
+            temperatureText: (performance === null || performance === void 0 ? void 0 : performance.temperatureRange) || "",
             latitude: vehicle.latitude,
             longitude: vehicle.longitude,
             markers: [{
