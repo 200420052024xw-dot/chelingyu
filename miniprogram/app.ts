@@ -1,6 +1,7 @@
 import { bootstrapLocalDatabase } from "./repositories/local-database";
 import { sessionStore } from "./stores/session";
 import { reportEnvStatus } from "./config/env";
+import { isSharedMode, sharedPricing } from "./services/remote";
 
 App<IAppOption>({
   globalData: {
@@ -34,7 +35,7 @@ App<IAppOption>({
     console.info(`[perf] app onLaunch ${Date.now() - launchStartedAt}ms`);
   },
 
-  onShow() {},
+  onShow() { if (isSharedMode()) void sharedPricing.syncModels().catch(error => console.warn("[models] sync failed", error)); },
 
   onError(err) {
     console.error("[App.onError]", err);

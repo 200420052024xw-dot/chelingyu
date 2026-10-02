@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.homeDemoFleet = void 0;
 const vehicle_products_1 = require("../content/vehicle-products");
+const geo_1 = require("../adapters/geo");
 let snapshot = null;
 let generation = 0;
 const DIRECTIONS = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"];
@@ -9,6 +10,21 @@ function directionFor(angle) {
     return DIRECTIONS[Math.round(angle / (Math.PI / 4)) % DIRECTIONS.length];
 }
 exports.homeDemoFleet = {
+    useShared(anchor, anchorLabel, fleet) {
+        const vehicles = fleet.filter(vehicle => vehicle.location && vehicle.status === "available" && (0, geo_1.haversineMeters)(vehicle.location, anchor) <= 3000).map((vehicle, index) => {
+            var _a, _b;
+            const distanceMeters = Math.round((0, geo_1.haversineMeters)(vehicle.location, anchor));
+            return {
+                id: vehicle.id, markerId: index + 1, modelId: vehicle.modelId,
+                modelCode: ((_a = vehicle.model) === null || _a === void 0 ? void 0 : _a.code) || vehicle.modelId, modelName: ((_b = vehicle.model) === null || _b === void 0 ? void 0 : _b.name) || "无人配送车",
+                latitude: vehicle.location.latitude, longitude: vehicle.location.longitude,
+                distanceMeters, locationText: `距当前位置约 ${distanceMeters} 米`, status: "可立即接单",
+                etaMinutes: Math.max(3, Math.ceil(distanceMeters / 250)), batteryPercent: vehicle.batteryPercent || 0,
+            };
+        });
+        snapshot = { anchor, anchorLabel, vehicles };
+        return snapshot;
+    },
     regenerate(anchor, anchorLabel, random = Math.random) {
         let count = 2 + Math.floor(random() * 5);
         if (snapshot && count === snapshot.vehicles.length)

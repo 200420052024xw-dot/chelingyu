@@ -3,6 +3,7 @@ import type { Vehicle, VehicleModel } from "../../../../contracts/types";
 import { ownerService } from "../../../../services/owner";
 import { repo } from "../../../../repositories/index";
 import { formatDistance } from "../../../../adapters/geo";
+import { isSharedMode, sharedFleet } from "../../../../services/remote";
 
 interface PageData {
   vehicles: Array<Vehicle & { model: VehicleModel | undefined }>;
@@ -11,7 +12,12 @@ interface PageData {
 Page<PageData, any>(withPagePerformance<PageData, any>("packages/owner/pages/bind/index", {
   data: { vehicles: [] },
 
-  onLoad() {
+  async onLoad() {
+    if (isSharedMode()) {
+      try { this.setData({ vehicles: await sharedFleet.availableDemoVehicles() }); }
+      catch (error: any) { wx.showToast({ title: error?.message || "加载失败", icon: "none" }); }
+      return;
+    }
     const list = ownerService.listAvailableDemoVehicles().map((v) => ({
       ...v,
       model: repo.getVehicleModel(v.modelId),
@@ -19,10 +25,11 @@ Page<PageData, any>(withPagePerformance<PageData, any>("packages/owner/pages/bin
     this.setData({ vehicles: list });
   },
 
-  onBind(e: any) {
+  async onBind(e: any) {
     const id = e.currentTarget.dataset.id;
     try {
-      ownerService.bindDemoVehicle({ vehicleId: id });
+      if (isSharedMode()) await sharedFleet.bindDemoVehicle(id);
+      else ownerService.bindDemoVehicle({ vehicleId: id });
       wx.showToast({ title: "绑定成功", icon: "success" });
       setTimeout(() => wx.navigateBack(), 600);
     } catch (err: any) {

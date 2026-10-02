@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const local_database_1 = require("./repositories/local-database");
 const session_1 = require("./stores/session");
 const env_1 = require("./config/env");
+const remote_1 = require("./services/remote");
 App({
     globalData: {
         statusBarHeight: 0,
@@ -31,7 +32,8 @@ App({
         }
         console.info(`[perf] app onLaunch ${Date.now() - launchStartedAt}ms`);
     },
-    onShow() { },
+    onShow() { if ((0, remote_1.isSharedMode)())
+        void remote_1.sharedPricing.syncModels().catch(error => console.warn("[models] sync failed", error)); },
     onError(err) {
         console.error("[App.onError]", err);
     },

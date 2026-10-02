@@ -1,11 +1,14 @@
 import { VEHICLE_CATALOG } from "../../../../content/vehicle-products";
 import { VEHICLE_PERFORMANCE } from "../../../../content/vehicle-performance";
 import { homeDemoFleet } from "../../../../services/home-demo-fleet";
+import { isSharedMode, sharedPricing } from "../../../../services/remote";
+import { repo } from "../../../../repositories/index";
 
 interface PageData {
   found: boolean;
   modelName: string;
   modelCode: string;
+  modelImage: string;
   description: string;
   status: string;
   locationText: string;
@@ -27,6 +30,7 @@ Page<PageData, any>({
     found: false,
     modelName: "",
     modelCode: "",
+    modelImage: "/assets/vehicles/delivery-pod.png",
     description: "",
     status: "",
     locationText: "",
@@ -43,7 +47,8 @@ Page<PageData, any>({
     markers: [],
   },
 
-  onLoad(options: { id?: string }) {
+  async onLoad(options: { id?: string }) {
+    if(isSharedMode()) await sharedPricing.syncModels().catch(()=>undefined);
     const vehicle = homeDemoFleet.getVehicle(decodeURIComponent(options.id || ""));
     const model = vehicle && VEHICLE_CATALOG.find((item) => item.id === vehicle.modelId);
     if (!vehicle || !model) return;
@@ -53,6 +58,7 @@ Page<PageData, any>({
       found: true,
       modelName: model.name,
       modelCode: model.code,
+      modelImage: repo.getVehicleModel(model.id)?.imageUrl || model.image,
       description: model.description,
       status: vehicle.status,
       locationText: vehicle.locationText,

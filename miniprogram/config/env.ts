@@ -16,6 +16,10 @@
  */
 
 export interface EnvConfig {
+  /** 共享订单 API 地址；为空继续运行本地原型 */
+  orderApiBaseUrl: string;
+  /** 仅开发环境允许的测试账号登录 */
+  orderDemoAuth: boolean;
   /** 腾讯位置服务 WebService API Key（lbs.qq.com 控制台申请） */
   tencentMapsKey: string;
   /** 是否在演示模式下也调用真实 WebService；为 false 时距离/ETA 全部走本地 mock */
@@ -29,6 +33,8 @@ export interface EnvConfig {
 }
 
 const ENV_DEFAULTS: EnvConfig = {
+  orderApiBaseUrl: "",
+  orderDemoAuth: false,
   tencentMapsKey: "",
   useTencentMapsWebService: false,
   tencentMapsApiBase: "https://apis.map.qq.com",
@@ -74,6 +80,7 @@ function parseDotEnv(content: string): Partial<EnvConfig> {
     map[k] = v;
   });
   const out: Partial<EnvConfig> = {};
+  if (map.ORDER_API_BASE_URL || map.orderApiBaseUrl) out.orderApiBaseUrl = map.ORDER_API_BASE_URL ?? map.orderApiBaseUrl;
   if (map.tencentMapsKey || map.TENCENT_MAPS_KEY) {
     out.tencentMapsKey = (map.tencentMapsKey ?? map.TENCENT_MAPS_KEY).trim();
   }
@@ -84,6 +91,8 @@ function parseDotEnv(content: string): Partial<EnvConfig> {
     if (map[camel] !== undefined) return flagStr(camel);
     return undefined;
   };
+  const demoAuth = flag("ORDER_DEMO_AUTH", "orderDemoAuth");
+  if (demoAuth !== undefined) out.orderDemoAuth = demoAuth;
   const webSvc = flag("USE_TENCENT_MAPS_WEB_SERVICE", "useTencentMapsWebService");
   if (webSvc !== undefined) out.useTencentMapsWebService = webSvc;
   if (map.tencentMapsApiBase || map.TENCENT_MAPS_API_BASE) {
@@ -143,6 +152,8 @@ function loadGenerated(): Partial<EnvConfig> {
 const GENERATED = loadGenerated();
 
 export const ENV: EnvConfig = {
+  orderApiBaseUrl: GENERATED.orderApiBaseUrl ?? LOCAL.orderApiBaseUrl ?? DOTENV.orderApiBaseUrl ?? ENV_DEFAULTS.orderApiBaseUrl,
+  orderDemoAuth: GENERATED.orderDemoAuth ?? LOCAL.orderDemoAuth ?? DOTENV.orderDemoAuth ?? ENV_DEFAULTS.orderDemoAuth,
   tencentMapsKey: (
     GENERATED.tencentMapsKey || LOCAL.tencentMapsKey || DOTENV.tencentMapsKey || ENV_DEFAULTS.tencentMapsKey
   ).trim(),
@@ -180,5 +191,6 @@ export function reportEnvStatus(): void {
   lines.push(`• useTencentMapsWebService = ${ENV.useTencentMapsWebService}`);
   lines.push(`• 本地模拟接口 = ${ENV.mockMode ? "已启用" : "已关闭"}`);
   lines.push(`• apiBase = ${ENV.tencentMapsApiBase}`);
+  lines.push(`• 共享订单 API = ${ENV.orderApiBaseUrl || "未配置，使用本地演示数据"}`);
   console.info("[env]\n  " + lines.join("\n  "));
 }

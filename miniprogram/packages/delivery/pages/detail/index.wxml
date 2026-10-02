@@ -14,9 +14,9 @@
       <view class="status-hint">{{statusHint}}</view>
 
       <!-- 步骤进度条 -->
-      <view class="step-strip">
+      <view class="step-strip" bindtap="onOpenProgress">
         <view
-          class="step {{index <= statusStepIndex ? 'done' : ''}} {{index === statusStepIndex ? 'current' : ''}}"
+          class="step {{index <= statusStepIndex ? 'done' : ''}} {{index === statusStepIndex && !progressTerminal ? 'current' : ''}}"
           wx:for="{{orderSteps}}"
           wx:key="key"
         >
@@ -26,6 +26,7 @@
           <view class="step-label">{{item.label}}</view>
         </view>
       </view>
+      <view class="progress-open-hint" bindtap="onOpenProgress">点击查看完整订单进度 ›</view>
     </view>
 
     <!-- 车辆信息（已分配） -->
@@ -33,8 +34,8 @@
       <view class="vehicle-head">
         <image class="vehicle-image" src="{{view.assignedVehiclePublic.modelImage}}" mode="aspectFit" />
         <view class="vehicle-info">
-          <view class="vehicle-name">{{view.assignedVehiclePublic.modelName}}</view>
-          <view class="vehicle-no">车牌：{{view.assignedVehiclePublic.vehicleNo}}</view>
+          <view class="vehicle-title-row"><view class="vehicle-name">{{view.assignedVehiclePublic.modelName}}</view><view class="distance-to-user">{{distanceLabel}}</view></view>
+          <view class="vehicle-no">车辆编号：{{view.assignedVehiclePublic.vehicleNo}}</view>
           <view class="vehicle-meta">
             <view class="meta-pill">
               <text class="meta-pill-label">电量</text>
@@ -48,10 +49,16 @@
         </view>
       </view>
     </view>
-    <view class="card vehicle-card hq-capacity-card" wx:elif="{{view.order.dispatchSource === 'headquarters'}}">
-      <view class="vehicle-name">{{view.order.vehicleSnapshot.modelName}} · 总部调车</view>
-      <view class="vehicle-no">{{view.order.status === 'pending_headquarters_review' ? '等待总部审核，审核通过后才能支付。' : view.order.status === 'failed' ? (view.order.headquartersReviewReason || '总部审核未通过') : '已确认运力，等待分配同车型车辆。'}}</view>
+    <view class="card vehicle-card hq-capacity-card" wx:elif="{{view.order.dispatchSource === 'headquarters' || view.order.dispatchSource === 'platform'}}">
+      <view class="vehicle-name">{{view.order.vehicleSnapshot.modelName}} · 平台调度</view>
+      <view class="vehicle-no">{{view.order.status === 'pending_dispatch_review' || view.order.status === 'pending_headquarters_review' ? '等待调度确认，通过后即可支付。' : view.order.status === 'failed' ? (view.order.dispatchReviewReason || view.order.headquartersReviewReason || '调度未通过') : '正在协调同车型可用车辆。'}}</view>
       <view class="vehicle-no" wx:if="{{scheduledPickupLabel}}">预约时间：{{scheduledPickupLabel}}</view>
+    </view>
+
+    <view class="card route-card" wx:if="{{mapVisible}}">
+      <view class="section-title">车辆与路线</view>
+      <map class="route-map" latitude="{{mapLatitude}}" longitude="{{mapLongitude}}" scale="13" markers="{{mapMarkers}}" polyline="{{mapPolyline}}" show-location="{{false}}"></map>
+      <view class="route-note">模拟轨迹 · 车辆位置与路线仅供演示，非实时设备定位</view>
     </view>
 
     <!-- 地址/货物 -->
@@ -90,47 +97,11 @@
       </view>
     </view>
 
-    <!-- 时间线 -->
-    <view class="card">
-      <view class="section-title">订单进度</view>
-      <view class="timeline">
-        <view class="timeline-item {{index === 0 ? 'first' : ''}} {{item.isCurrent ? 'current' : ''}}" wx:for="{{timeline}}" wx:key="occurredAt">
-          <view class="timeline-dot"></view>
-          <view class="timeline-content">
-            <view class="timeline-label">{{item.label}}</view>
-            <view class="timeline-time">{{item.time}}</view>
-          </view>
-        </view>
-      </view>
-
-      <view class="demo-actions">
-        <view class="demo-title">模拟订单进度</view>
-        <view class="demo-row">
-          <button
-            class="demo-btn"
-            wx:if="{{fmt.has(view.allowedActions, 'advance')}}"
-            bindtap="onAdvance"
-            hover-class="demo-btn-hover"
-          >推进</button>
-          <button
-            class="demo-btn"
-            wx:if="{{fmt.has(view.allowedActions, 'confirm_loaded')}}"
-            bindtap="onConfirmLoaded"
-            hover-class="demo-btn-hover"
-          >确认装货</button>
-          <button
-            class="demo-btn primary"
-            wx:if="{{fmt.has(view.allowedActions, 'confirm_received')}}"
-            bindtap="onConfirmReceived"
-            hover-class="demo-btn-hover"
-          >确认收货</button>
-          <button
-            class="demo-btn ghost"
-            bindtap="onAdvanceClock"
-            hover-class="demo-btn-hover"
-          >时钟 +10 分钟</button>
-        </view>
-      </view>
+    <view class="card" wx:if="{{view.order.status === 'pending_customer_quote'}}">
+      <view class="section-title">平台建议更换车型</view>
+      <view class="quote-change">新车型：{{view.order.proposedVehicleModelId}}</view>
+      <view class="quote-change">新报价：{{fmt.money(view.order.proposedTotalAmountFen)}}</view>
+      <view class="route-note">确认新报价后才会进入支付环节。</view>
     </view>
 
     <!-- 费用与支付 -->
@@ -194,9 +165,16 @@
           bindtap="onRetryPay"
           disabled="{{payProcessing}}"
         >{{fmt.has(view.allowedActions, 'retry_pay') ? '重新支付' : '去支付'}}</button>
+        <button class="btn-primary" wx:if="{{fmt.has(view.allowedActions, 'accept_quote')}}" bindtap="onAcceptQuote">确认新报价</button>
+        <button class="btn-primary" wx:if="{{fmt.has(view.allowedActions, 'confirm_loaded')}}" bindtap="onConfirmLoaded">确认装货</button>
+        <button class="btn-primary" wx:if="{{fmt.has(view.allowedActions, 'confirm_received')}}" bindtap="onConfirmReceived">确认收货</button>
       </view>
     </view>
   </block>
+
+  <view class="modal-mask" wx:if="{{progressOpen}}" bindtap="onCloseProgress">
+    <view class="modal progress-modal" catchtap=""><view class="modal-title">订单完整进度</view><scroll-view scroll-y="{{true}}" class="progress-scroll"><view class="timeline"><view class="timeline-item {{index === 0 ? 'first' : ''}} {{item.isCurrent ? 'current' : ''}}" wx:for="{{timeline}}" wx:key="occurredAt"><view class="timeline-dot"></view><view class="timeline-content"><view class="timeline-label">{{item.label}}</view><view class="timeline-time">{{item.time}}</view><view class="timeline-time" wx:if="{{item.note}}">{{item.note}}</view></view></view></view></scroll-view><button class="btn-primary" bindtap="onCloseProgress">关闭</button></view>
+  </view>
 
   <!-- 取消弹窗 -->
   <view class="modal-mask" wx:if="{{cancelModalOpen}}" bindtap="onCloseCancel">

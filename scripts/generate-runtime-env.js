@@ -14,6 +14,8 @@ if (fs.existsSync(source)) {
 }
 
 const generated = {};
+if (values.ORDER_API_BASE_URL) generated.orderApiBaseUrl = values.ORDER_API_BASE_URL;
+if (values.ORDER_DEMO_AUTH !== undefined) generated.orderDemoAuth = /^(true|1|yes)$/i.test(values.ORDER_DEMO_AUTH);
 if (values.TENCENT_MAPS_KEY) generated.tencentMapsKey = values.TENCENT_MAPS_KEY;
 if (values.USE_TENCENT_MAPS_WEB_SERVICE !== undefined) {
   generated.useTencentMapsWebService = /^(true|1|yes)$/i.test(values.USE_TENCENT_MAPS_WEB_SERVICE);

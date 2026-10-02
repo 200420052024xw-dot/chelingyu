@@ -6,6 +6,7 @@ const location_1 = require("../../adapters/location");
 const home_demo_fleet_1 = require("../../services/home-demo-fleet");
 const tencent_maps_1 = require("../../adapters/tencent-maps");
 const page_performance_1 = require("../../utils/page-performance");
+const remote_1 = require("../../services/remote");
 let openingOrder = false;
 let locationRequestVersion = 0;
 function layout() {
@@ -154,6 +155,13 @@ Page((0, page_performance_1.withPagePerformance)("home", {
         });
     },
     refreshDemoFleet(point, label, randomize = true) {
+        if ((0, remote_1.isSharedMode)()) {
+            remote_1.sharedFleet.list().then((fleet) => {
+                const snapshot = home_demo_fleet_1.homeDemoFleet.useShared(point, label, fleet);
+                this.setData({ markers: snapshot.vehicles.map(vehicle => ({ id: vehicle.markerId, latitude: vehicle.latitude, longitude: vehicle.longitude, width: 52, height: 52, iconPath: "/assets/vehicles/delivery-pod.png" })) });
+            }).catch((error) => wx.showToast({ title: (error === null || error === void 0 ? void 0 : error.message) || "运力加载失败", icon: "none" }));
+            return [];
+        }
         const snapshot = randomize
             ? home_demo_fleet_1.homeDemoFleet.regenerate(point, label)
             : home_demo_fleet_1.homeDemoFleet.relocate(point, label);

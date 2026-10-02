@@ -15,11 +15,13 @@
  *   - WebService API（地理编码、距离矩阵、路线规划）需要在 https://lbs.qq.com/ 单独申请 key
  *   - 申请时"应用类型"选「微信小程序」，"APPID" 填 project.config.json 里的 appid
  */
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ENV = void 0;
 exports.reportEnvStatus = reportEnvStatus;
 const ENV_DEFAULTS = {
+    orderApiBaseUrl: "",
+    orderDemoAuth: false,
     tencentMapsKey: "",
     useTencentMapsWebService: false,
     tencentMapsApiBase: "https://apis.map.qq.com",
@@ -51,7 +53,7 @@ function loadLocal() {
  *   MOCK_MODE / mockMode (true|false)
  */
 function parseDotEnv(content) {
-    var _a, _b;
+    var _a, _b, _c;
     const map = {};
     content.split(/\r?\n/).forEach((line) => {
         const trimmed = line.trim();
@@ -67,8 +69,10 @@ function parseDotEnv(content) {
         map[k] = v;
     });
     const out = {};
+    if (map.ORDER_API_BASE_URL || map.orderApiBaseUrl)
+        out.orderApiBaseUrl = (_a = map.ORDER_API_BASE_URL) !== null && _a !== void 0 ? _a : map.orderApiBaseUrl;
     if (map.tencentMapsKey || map.TENCENT_MAPS_KEY) {
-        out.tencentMapsKey = ((_a = map.tencentMapsKey) !== null && _a !== void 0 ? _a : map.TENCENT_MAPS_KEY).trim();
+        out.tencentMapsKey = ((_b = map.tencentMapsKey) !== null && _b !== void 0 ? _b : map.TENCENT_MAPS_KEY).trim();
     }
     const flagStr = (k) => map[k] === "true" || map[k] === "1" || map[k] === "yes";
     const flag = (snake, camel) => {
@@ -78,11 +82,14 @@ function parseDotEnv(content) {
             return flagStr(camel);
         return undefined;
     };
+    const demoAuth = flag("ORDER_DEMO_AUTH", "orderDemoAuth");
+    if (demoAuth !== undefined)
+        out.orderDemoAuth = demoAuth;
     const webSvc = flag("USE_TENCENT_MAPS_WEB_SERVICE", "useTencentMapsWebService");
     if (webSvc !== undefined)
         out.useTencentMapsWebService = webSvc;
     if (map.tencentMapsApiBase || map.TENCENT_MAPS_API_BASE) {
-        out.tencentMapsApiBase = ((_b = map.tencentMapsApiBase) !== null && _b !== void 0 ? _b : map.TENCENT_MAPS_API_BASE);
+        out.tencentMapsApiBase = ((_c = map.tencentMapsApiBase) !== null && _c !== void 0 ? _c : map.TENCENT_MAPS_API_BASE);
     }
     const to = flag("REQUEST_TIMEOUT_MS", "requestTimeoutMs");
     if (map.requestTimeoutMs !== undefined) {
@@ -143,11 +150,13 @@ function loadGenerated() {
 }
 const GENERATED = loadGenerated();
 exports.ENV = {
+    orderApiBaseUrl: (_c = (_b = (_a = GENERATED.orderApiBaseUrl) !== null && _a !== void 0 ? _a : LOCAL.orderApiBaseUrl) !== null && _b !== void 0 ? _b : DOTENV.orderApiBaseUrl) !== null && _c !== void 0 ? _c : ENV_DEFAULTS.orderApiBaseUrl,
+    orderDemoAuth: (_f = (_e = (_d = GENERATED.orderDemoAuth) !== null && _d !== void 0 ? _d : LOCAL.orderDemoAuth) !== null && _e !== void 0 ? _e : DOTENV.orderDemoAuth) !== null && _f !== void 0 ? _f : ENV_DEFAULTS.orderDemoAuth,
     tencentMapsKey: (GENERATED.tencentMapsKey || LOCAL.tencentMapsKey || DOTENV.tencentMapsKey || ENV_DEFAULTS.tencentMapsKey).trim(),
-    useTencentMapsWebService: (_c = (_b = (_a = GENERATED.useTencentMapsWebService) !== null && _a !== void 0 ? _a : (LOCAL.tencentMapsKey ? LOCAL.useTencentMapsWebService : undefined)) !== null && _b !== void 0 ? _b : DOTENV.useTencentMapsWebService) !== null && _c !== void 0 ? _c : ENV_DEFAULTS.useTencentMapsWebService,
-    tencentMapsApiBase: (_f = (_e = (_d = GENERATED.tencentMapsApiBase) !== null && _d !== void 0 ? _d : LOCAL.tencentMapsApiBase) !== null && _e !== void 0 ? _e : DOTENV.tencentMapsApiBase) !== null && _f !== void 0 ? _f : ENV_DEFAULTS.tencentMapsApiBase,
-    requestTimeoutMs: (_j = (_h = (_g = GENERATED.requestTimeoutMs) !== null && _g !== void 0 ? _g : LOCAL.requestTimeoutMs) !== null && _h !== void 0 ? _h : DOTENV.requestTimeoutMs) !== null && _j !== void 0 ? _j : ENV_DEFAULTS.requestTimeoutMs,
-    mockMode: (_m = (_l = (_k = GENERATED.mockMode) !== null && _k !== void 0 ? _k : LOCAL.mockMode) !== null && _l !== void 0 ? _l : DOTENV.mockMode) !== null && _m !== void 0 ? _m : ENV_DEFAULTS.mockMode,
+    useTencentMapsWebService: (_j = (_h = (_g = GENERATED.useTencentMapsWebService) !== null && _g !== void 0 ? _g : (LOCAL.tencentMapsKey ? LOCAL.useTencentMapsWebService : undefined)) !== null && _h !== void 0 ? _h : DOTENV.useTencentMapsWebService) !== null && _j !== void 0 ? _j : ENV_DEFAULTS.useTencentMapsWebService,
+    tencentMapsApiBase: (_m = (_l = (_k = GENERATED.tencentMapsApiBase) !== null && _k !== void 0 ? _k : LOCAL.tencentMapsApiBase) !== null && _l !== void 0 ? _l : DOTENV.tencentMapsApiBase) !== null && _m !== void 0 ? _m : ENV_DEFAULTS.tencentMapsApiBase,
+    requestTimeoutMs: (_q = (_p = (_o = GENERATED.requestTimeoutMs) !== null && _o !== void 0 ? _o : LOCAL.requestTimeoutMs) !== null && _p !== void 0 ? _p : DOTENV.requestTimeoutMs) !== null && _q !== void 0 ? _q : ENV_DEFAULTS.requestTimeoutMs,
+    mockMode: (_t = (_s = (_r = GENERATED.mockMode) !== null && _r !== void 0 ? _r : LOCAL.mockMode) !== null && _s !== void 0 ? _s : DOTENV.mockMode) !== null && _t !== void 0 ? _t : ENV_DEFAULTS.mockMode,
 };
 /**
  * 启动期自检：缺关键 key 时在控制台打 warn，不抛错（演示模式允许无 key 运行）。
@@ -168,5 +177,6 @@ function reportEnvStatus() {
     lines.push(`• useTencentMapsWebService = ${exports.ENV.useTencentMapsWebService}`);
     lines.push(`• 本地模拟接口 = ${exports.ENV.mockMode ? "已启用" : "已关闭"}`);
     lines.push(`• apiBase = ${exports.ENV.tencentMapsApiBase}`);
+    lines.push(`• 共享订单 API = ${exports.ENV.orderApiBaseUrl || "未配置，使用本地演示数据"}`);
     console.info("[env]\n  " + lines.join("\n  "));
 }

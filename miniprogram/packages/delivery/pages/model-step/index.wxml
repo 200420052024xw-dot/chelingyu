@@ -70,7 +70,7 @@
       <scroll-view class="model-tags" scroll-x="true" show-scrollbar="false">
         <view class="tag-track">
           <text class="fit-label {{!item.available ? 'warning' : ''}}">{{item.available ? '适合当前货物' : '需核实适配'}}</text>
-          <text class="source-tag {{item.supplySource === 'headquarters' ? 'hq' : ''}}">{{item.supplySource === 'headquarters' ? '总部调车' : '附近车辆'}}</text>
+          <text class="source-tag {{item.supplySource === 'headquarters' ? 'hq' : ''}}">{{item.supplySource === 'headquarters' ? '平台调度' : '附近车辆'}}</text>
           <text class="tag" wx:for="{{item.tags}}" wx:for-item="t" wx:key="*this">{{t}}</text>
         </view>
       </scroll-view>
@@ -80,12 +80,12 @@
         <text class="footer-item">距离 {{fmt.distance(item.distanceMeters)}}</text>
         <text class="footer-item">约 {{item.estimatedArrivalMinutes}} 分钟到达</text>
       </view>
-      <view class="model-footer hq-footer" wx:else>需总部确认后安排车辆</view>
+      <view class="model-footer hq-footer" wx:else>需平台调度确认后安排车辆</view>
 
     </view>
   </view>
 
-  <empty-state wx:if="{{visibleOffers.length === 0}}" image="/assets/images/empty-vehicles.png" title="暂无推荐车型" desc="可切换到全部车型查看，选择后由总部审核适配情况" />
+  <empty-state wx:if="{{visibleOffers.length === 0}}" image="/assets/images/empty-vehicles.png" title="暂无推荐车型" desc="可切换到全部车型查看，由平台确认适配情况" />
 
   <view class="selected-bar" wx:if="{{selected}}">
     <view class="bar-thumb">
@@ -93,7 +93,7 @@
     </view>
     <view class="bar-info">
       <view class="bar-line">已选择：{{selected.modelName}}</view>
-      <view class="bar-eta" wx:if="{{selected.supplySource === 'headquarters'}}">需总部确认</view>
+      <view class="bar-eta" wx:if="{{selected.supplySource === 'headquarters'}}">需调度确认</view>
       <view class="bar-eta" wx:else>预计 <text class="text-primary">{{selected.estimatedArrivalMinutes}}</text> 分钟到达</view>
     </view>
     <button class="btn-primary bar-btn" bindtap="onConfirm">确认下单</button>

@@ -3,11 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const vehicle_products_1 = require("../../../../content/vehicle-products");
 const vehicle_performance_1 = require("../../../../content/vehicle-performance");
 const home_demo_fleet_1 = require("../../../../services/home-demo-fleet");
+const remote_1 = require("../../../../services/remote");
+const index_1 = require("../../../../repositories/index");
 Page({
     data: {
         found: false,
         modelName: "",
         modelCode: "",
+        modelImage: "/assets/vehicles/delivery-pod.png",
         description: "",
         status: "",
         locationText: "",
@@ -23,7 +26,10 @@ Page({
         longitude: 0,
         markers: [],
     },
-    onLoad(options) {
+    async onLoad(options) {
+        var _a;
+        if ((0, remote_1.isSharedMode)())
+            await remote_1.sharedPricing.syncModels().catch(() => undefined);
         const vehicle = home_demo_fleet_1.homeDemoFleet.getVehicle(decodeURIComponent(options.id || ""));
         const model = vehicle && vehicle_products_1.VEHICLE_CATALOG.find((item) => item.id === vehicle.modelId);
         if (!vehicle || !model)
@@ -34,6 +40,7 @@ Page({
             found: true,
             modelName: model.name,
             modelCode: model.code,
+            modelImage: ((_a = index_1.repo.getVehicleModel(model.id)) === null || _a === void 0 ? void 0 : _a.imageUrl) || model.image,
             description: model.description,
             status: vehicle.status,
             locationText: vehicle.locationText,

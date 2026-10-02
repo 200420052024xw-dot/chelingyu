@@ -1,6 +1,6 @@
 <view class="detail-page" wx:if="{{found}}">
   <view class="vehicle-hero">
-    <image class="hero-image" src="/assets/vehicles/delivery-pod.png" mode="aspectFit"></image>
+    <image class="hero-image" src="{{modelImage}}" mode="aspectFit"></image>
     <view class="model-code">{{modelCode}}</view>
     <view class="model-name">{{modelName}}</view>
     <view class="model-description">{{description}}</view>

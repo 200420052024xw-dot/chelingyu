@@ -282,6 +282,8 @@ export const orderService = {
 
     const flow: Record<OrderStatus, OrderStatus> = {
       pending_headquarters_review: "pending_headquarters_review",
+      pending_dispatch_review: "pending_dispatch_review",
+      pending_customer_quote: "pending_customer_quote",
       pending_payment: "paid",
       paid: "matching",
       scheduled: "matching",

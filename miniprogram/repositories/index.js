@@ -44,6 +44,15 @@ exports.repo = {
     getVehicleModel(id) {
         return (0, local_database_1.getDB)().vehicleModels.find((m) => m.id === id);
     },
+    upsertVehicleModel(model) {
+        const db = (0, local_database_1.getDB)();
+        const index = db.vehicleModels.findIndex(m => m.id === model.id);
+        if (index >= 0)
+            db.vehicleModels[index] = model;
+        else
+            db.vehicleModels.push(model);
+        (0, local_database_1.commitDB)();
+    },
     listVehicles() {
         return [...(0, local_database_1.getDB)().vehicles];
     },

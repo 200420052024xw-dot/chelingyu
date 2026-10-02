@@ -10,6 +10,8 @@ exports.isAdvanceable = isAdvanceable;
 /** 合法迁移：from -> [to, ...] */
 const TRANSITIONS = {
     pending_headquarters_review: ["pending_payment", "failed", "cancelled"],
+    pending_dispatch_review: ["pending_payment", "pending_customer_quote", "failed", "cancelled"],
+    pending_customer_quote: ["pending_payment", "cancelled"],
     pending_payment: ["paid", "cancelled"],
     paid: ["scheduled", "matching", "failed", "cancelled"],
     scheduled: ["matching", "cancelled"],
@@ -25,6 +27,8 @@ const TRANSITIONS = {
 };
 exports.ACTIVE_STATUSES = [
     "pending_headquarters_review",
+    "pending_dispatch_review",
+    "pending_customer_quote",
     "pending_payment",
     "paid",
     "scheduled",
@@ -56,7 +60,7 @@ function isTerminal(status) {
 }
 /** 用户侧可主动操作的取消窗口 */
 function isUserCancelable(status) {
-    return ["pending_headquarters_review", "pending_payment", "paid", "scheduled", "matching", "dispatched", "vehicle_to_pickup"].includes(status);
+    return ["pending_headquarters_review", "pending_dispatch_review", "pending_customer_quote", "pending_payment", "paid", "scheduled", "matching", "dispatched", "vehicle_to_pickup"].includes(status);
 }
 /** 是否允许用户推进（演示） */
 function isAdvanceable(status) {

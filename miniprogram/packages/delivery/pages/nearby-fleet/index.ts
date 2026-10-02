@@ -1,5 +1,6 @@
 import { APP_CONFIG } from "../../../../config/index";
 import { homeDemoFleet, HomeDemoVehicle } from "../../../../services/home-demo-fleet";
+import { isSharedMode, sharedFleet } from "../../../../services/remote";
 
 interface VehicleRow extends HomeDemoVehicle { coordinateText: string }
 interface PageData {
@@ -17,10 +18,17 @@ Page<PageData, any>({
     rows: [],
   },
 
-  onLoad(options: { mode?: string }) {
+  async onLoad(options: { mode?: string }) {
     const mode = options.mode === "status" ? "status" : "vehicles";
-    const snapshot = homeDemoFleet.getSnapshot()
-      ?? homeDemoFleet.regenerate(APP_CONFIG.demoCenter, "演示区域");
+    let snapshot;
+    try {
+      snapshot = isSharedMode()
+        ? homeDemoFleet.useShared(homeDemoFleet.getSnapshot()?.anchor || APP_CONFIG.demoCenter, "当前区域", await sharedFleet.list())
+        : homeDemoFleet.getSnapshot() ?? homeDemoFleet.regenerate(APP_CONFIG.demoCenter, "演示区域");
+    } catch (error: any) {
+      wx.showToast({ title: error?.message || "车辆加载失败", icon: "none" });
+      return;
+    }
     const title = mode === "status" ? "服务状态" : "附近可用车辆";
     wx.setNavigationBarTitle({ title });
     this.setData({

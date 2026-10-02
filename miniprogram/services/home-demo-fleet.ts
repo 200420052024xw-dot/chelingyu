@@ -1,6 +1,7 @@
 /** 首页专用演示运力。与真实订单匹配和车主车辆数据隔离。 */
-import type { GeoPoint } from "../contracts/types";
+import type { GeoPoint, Vehicle, VehicleModel } from "../contracts/types";
 import { VEHICLE_CATALOG } from "../content/vehicle-products";
+import { haversineMeters } from "../adapters/geo";
 
 export interface HomeDemoVehicle {
   id: string;
@@ -32,6 +33,20 @@ function directionFor(angle: number): string {
 }
 
 export const homeDemoFleet = {
+  useShared(anchor: GeoPoint, anchorLabel: string, fleet: Array<Vehicle & { model?: VehicleModel }>): HomeDemoSnapshot {
+    const vehicles: HomeDemoVehicle[] = fleet.filter(vehicle => vehicle.location && vehicle.status === "available" && haversineMeters(vehicle.location, anchor) <= 3000).map((vehicle, index) => {
+      const distanceMeters = Math.round(haversineMeters(vehicle.location!, anchor));
+      return {
+        id: vehicle.id, markerId: index + 1, modelId: vehicle.modelId,
+        modelCode: vehicle.model?.code || vehicle.modelId, modelName: vehicle.model?.name || "无人配送车",
+        latitude: vehicle.location!.latitude, longitude: vehicle.location!.longitude,
+        distanceMeters, locationText: `距当前位置约 ${distanceMeters} 米`, status: "可立即接单",
+        etaMinutes: Math.max(3, Math.ceil(distanceMeters / 250)), batteryPercent: vehicle.batteryPercent || 0,
+      };
+    });
+    snapshot = { anchor, anchorLabel, vehicles };
+    return snapshot;
+  },
   regenerate(anchor: GeoPoint, anchorLabel: string, random: () => number = Math.random): HomeDemoSnapshot {
     let count = 2 + Math.floor(random() * 5);
     if (snapshot && count === snapshot.vehicles.length) count = count === 6 ? 2 : count + 1;

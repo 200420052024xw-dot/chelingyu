@@ -67,6 +67,13 @@ export const repo = {
   getVehicleModel(id: ID): VehicleModel | undefined {
     return getDB().vehicleModels.find((m) => m.id === id);
   },
+  upsertVehicleModel(model: VehicleModel): void {
+    const db = getDB();
+    const index = db.vehicleModels.findIndex(m => m.id === model.id);
+    if (index >= 0) db.vehicleModels[index] = model;
+    else db.vehicleModels.push(model);
+    commitDB();
+  },
   listVehicles(): Vehicle[] {
     return [...getDB().vehicles];
   },

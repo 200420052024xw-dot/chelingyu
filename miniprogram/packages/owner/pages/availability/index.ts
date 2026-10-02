@@ -2,6 +2,7 @@ import { withPagePerformance } from "../../../../utils/page-performance";
 import type { WeeklyTimeRange } from "../../../../contracts/types";
 import { ownerService } from "../../../../services/owner";
 import { repo } from "../../../../repositories/index";
+import { isSharedMode, sharedFleet } from "../../../../services/remote";
 
 interface PageData {
   vehicleId: string;
@@ -28,10 +29,10 @@ Page<PageData, any>(withPagePerformance<PageData, any>("packages/owner/pages/ava
     error: "",
   },
 
-  onLoad(query) {
+  async onLoad(query) {
     const id = query?.id as string;
     this.setData({ vehicleId: id });
-    const detail = ownerService.vehicleDetail(id);
+    const detail = isSharedMode() ? await sharedFleet.ownerVehicle(id) : ownerService.vehicleDetail(id);
     if (detail.rule) {
       const r = detail.rule.ranges[0] || { weekdays: ALL_WEEKDAYS, startTime: "08:00", endTime: "22:00" };
       this.setData({
@@ -69,7 +70,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("packages/owner/pages/ava
     this.setData({ endTime: e.detail.value });
   },
 
-  onSave() {
+  async onSave() {
     if (this.data.startTime >= this.data.endTime) {
       this.setData({ error: "开始时间需早于结束时间" });
       return;
@@ -88,12 +89,14 @@ Page<PageData, any>(withPagePerformance<PageData, any>("packages/owner/pages/ava
           endTime: this.data.endTime as `${number}:${number}`,
         },
       ];
-      ownerService.saveAvailability({
+      const input = {
         vehicleId: this.data.vehicleId,
         ranges,
         enabled: this.data.ruleEnabled,
         ownerShared: this.data.ownerShared,
-      });
+      };
+      if (isSharedMode()) await sharedFleet.saveAvailability(input.vehicleId, input);
+      else ownerService.saveAvailability(input);
       wx.showToast({ title: "已保存", icon: "success" });
       setTimeout(() => wx.navigateBack(), 600);
     } catch (e: any) {

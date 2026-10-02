@@ -4,6 +4,7 @@ import { locationAdapter } from "../../adapters/location";
 import { homeDemoFleet } from "../../services/home-demo-fleet";
 import { reverseGeocodeByWebService } from "../../adapters/tencent-maps";
 import { withPagePerformance } from "../../utils/page-performance";
+import { isSharedMode, sharedFleet } from "../../services/remote";
 
 interface PageData {
   regionLabel: string;
@@ -178,6 +179,13 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
   },
 
   refreshDemoFleet(point: { latitude: number; longitude: number }, label: string, randomize = true) {
+    if (isSharedMode()) {
+      sharedFleet.list().then((fleet) => {
+        const snapshot = homeDemoFleet.useShared(point, label, fleet);
+        this.setData({ markers: snapshot.vehicles.map(vehicle => ({ id: vehicle.markerId, latitude: vehicle.latitude, longitude: vehicle.longitude, width: 52, height: 52, iconPath: "/assets/vehicles/delivery-pod.png" })) });
+      }).catch((error) => wx.showToast({ title: error?.message || "运力加载失败", icon: "none" }));
+      return [];
+    }
     const snapshot = randomize
       ? homeDemoFleet.regenerate(point, label)
       : homeDemoFleet.relocate(point, label);

@@ -5,7 +5,9 @@ const pricing_1 = require("../../../../services/pricing");
 const booking_draft_1 = require("../../../../services/booking-draft");
 const index_1 = require("../../../../repositories/index");
 const geo_1 = require("../../../../adapters/geo");
+const geo_2 = require("../../../../adapters/geo");
 const page_performance_1 = require("../../../../utils/page-performance");
+const remote_1 = require("../../../../services/remote");
 Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
     data: {
         draftId: "",
@@ -26,12 +28,29 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
         this.setData({ draftId, returnToConfirm: (query === null || query === void 0 ? void 0 : query.returnTo) === "confirm" });
         this.refresh();
     },
-    refresh() {
-        var _a;
+    async refresh() {
+        var _a, _b;
         const draft = index_1.repo.getDraft(this.data.draftId);
         if (!draft)
             return;
-        const offers = fleet_1.fleetService.recommend({ draft });
+        if ((0, remote_1.isSharedMode)())
+            await remote_1.sharedPricing.syncModels().catch(() => undefined);
+        let offers = fleet_1.fleetService.recommend({ draft });
+        if ((0, remote_1.isSharedMode)()) {
+            try {
+                const fleet = await remote_1.sharedFleet.list();
+                const origin = (_a = draft.sender) === null || _a === void 0 ? void 0 : _a.location;
+                offers = offers.map(offer => {
+                    const matching = fleet.filter(v => v.modelId === offer.modelId && v.location).sort((a, b) => origin ? (0, geo_2.haversineMeters)(a.location, origin) - (0, geo_2.haversineMeters)(b.location, origin) : 0);
+                    const nearest = matching[0];
+                    const distance = (nearest === null || nearest === void 0 ? void 0 : nearest.location) && origin ? (0, geo_2.haversineMeters)(nearest.location, origin) : 0;
+                    return Object.assign(Object.assign({}, offer), { availableCount: matching.length, distanceMeters: distance, estimatedArrivalMinutes: nearest ? Math.max(3, Math.ceil(distance / 250)) : 0, batteryPercent: nearest === null || nearest === void 0 ? void 0 : nearest.batteryPercent, supplySource: draft.serviceTimeMode === "scheduled" || !nearest || offer.unavailableReasons.length ? "headquarters" : "nearby" });
+                });
+            }
+            catch (error) {
+                wx.showToast({ title: (error === null || error === void 0 ? void 0 : error.message) || "运力加载失败", icon: "none" });
+            }
+        }
         const recommendedList = offers.filter((o) => o.recommended);
         const sel = offers.find((o) => o.modelId === draft.selectedVehicleModelId)
             || recommendedList[0]
@@ -46,7 +65,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
             sortedByDistance,
             visibleOffers: recommendedList,
             loading: false,
-            selectedModelId: (_a = sel === null || sel === void 0 ? void 0 : sel.modelId) !== null && _a !== void 0 ? _a : "",
+            selectedModelId: (_b = sel === null || sel === void 0 ? void 0 : sel.modelId) !== null && _b !== void 0 ? _b : "",
             selected: sel,
         });
         if (sel)
@@ -69,7 +88,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
         if (!o.available) {
             wx.showModal({
                 title: "车型适配提醒",
-                content: `${o.unavailableReasons.join("；") || "该车型可能不适合当前货物"}。仍要选择将提交总部审核。`,
+                content: `${o.unavailableReasons.join("；") || "该车型可能不适合当前货物"}。仍要选择将提交平台调度确认。`,
                 cancelText: "返回重选",
                 confirmText: "仍要选择",
                 success: (result) => {
@@ -90,7 +109,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
         const id = e.currentTarget.dataset.id;
         wx.navigateTo({ url: `/packages/delivery/pages/model-detail/index?modelId=${encodeURIComponent(id)}` });
     },
-    computeQuote(modelId) {
+    async computeQuote(modelId) {
         this.setData({ computing: true, expired: false });
         try {
             const draft = index_1.repo.getDraft(this.data.draftId);
@@ -98,7 +117,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/model-step", {
                 this.setData({ computing: false });
                 return;
             }
-            const q = pricing_1.pricingService.quote({ draft, modelId });
+            const q = (0, remote_1.isSharedMode)() ? await remote_1.sharedPricing.quote(draft, modelId) : pricing_1.pricingService.quote({ draft, modelId });
             this.setData({ estimatedTotal: q.totalAmountFen, computing: false });
         }
         catch (e) {

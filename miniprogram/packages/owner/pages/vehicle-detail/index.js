@@ -6,6 +6,7 @@ const local_database_1 = require("../../../../repositories/local-database");
 const cargo_1 = require("../../../../view-models/cargo");
 const index_1 = require("../../../../config/index");
 const geo_1 = require("../../../../adapters/geo");
+const remote_1 = require("../../../../services/remote");
 const instance = {};
 Page((0, page_performance_1.withPagePerformance)("packages/owner/pages/vehicle-detail/index", {
     data: {
@@ -20,16 +21,19 @@ Page((0, page_performance_1.withPagePerformance)("packages/owner/pages/vehicle-d
         const id = query === null || query === void 0 ? void 0 : query.id;
         this.setData({ vehicleId: id });
         this.refresh();
-        instance.unsubscribe = (0, local_database_1.subscribeDB)(() => this.refresh());
+        if (!(0, remote_1.isSharedMode)())
+            instance.unsubscribe = (0, local_database_1.subscribeDB)(() => this.refresh());
     },
+    onShow() { if ((0, remote_1.isSharedMode)() && this.data.vehicleId)
+        this.refresh(); },
     onUnload() {
         var _a;
         (_a = instance.unsubscribe) === null || _a === void 0 ? void 0 : _a.call(instance);
     },
-    refresh() {
+    async refresh() {
         var _a;
         try {
-            const detail = owner_1.ownerService.vehicleDetail(this.data.vehicleId);
+            const detail = (0, remote_1.isSharedMode)() ? await remote_1.sharedFleet.ownerVehicle(this.data.vehicleId) : owner_1.ownerService.vehicleDetail(this.data.vehicleId);
             const userLoc = index_1.APP_CONFIG.demoCenter;
             const dist = detail.vehicle.location ? (0, geo_1.haversineMeters)(detail.vehicle.location, userLoc) : 0;
             this.setData({

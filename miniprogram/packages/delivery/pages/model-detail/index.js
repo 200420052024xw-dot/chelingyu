@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const index_1 = require("../../../../repositories/index");
 const vehicle_performance_1 = require("../../../../content/vehicle-performance");
+const remote_1 = require("../../../../services/remote");
 Page({
     data: {
         found: false,
@@ -16,7 +17,9 @@ Page({
         speed: "",
         temperature: "",
     },
-    onLoad(query) {
+    async onLoad(query) {
+        if ((0, remote_1.isSharedMode)())
+            await remote_1.sharedPricing.syncModels().catch(() => undefined);
         const model = index_1.repo.getVehicleModel(decodeURIComponent(query.modelId || ""));
         if (!model)
             return;

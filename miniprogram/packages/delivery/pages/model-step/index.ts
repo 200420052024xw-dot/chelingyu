@@ -4,7 +4,9 @@ import { pricingService } from "../../../../services/pricing";
 import { updateBookingDraft } from "../../../../services/booking-draft";
 import { repo } from "../../../../repositories/index";
 import { formatDistance } from "../../../../adapters/geo";
+import { haversineMeters } from "../../../../adapters/geo";
 import { withPagePerformance } from "../../../../utils/page-performance";
+import { isSharedMode, sharedFleet, sharedPricing } from "../../../../services/remote";
 
 interface PageData {
   draftId: string;
@@ -43,10 +45,23 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/model-step", {
     this.refresh();
   },
 
-  refresh() {
+  async refresh() {
     const draft = repo.getDraft(this.data.draftId);
     if (!draft) return;
-    const offers = fleetService.recommend({ draft });
+    if (isSharedMode()) await sharedPricing.syncModels().catch(() => undefined);
+    let offers = fleetService.recommend({ draft });
+    if (isSharedMode()) {
+      try {
+        const fleet = await sharedFleet.list();
+        const origin = draft.sender?.location;
+        offers = offers.map(offer => {
+          const matching = fleet.filter(v => v.modelId === offer.modelId && v.location).sort((a,b) => origin ? haversineMeters(a.location!,origin)-haversineMeters(b.location!,origin) : 0);
+          const nearest = matching[0];
+          const distance = nearest?.location && origin ? haversineMeters(nearest.location,origin) : 0;
+          return { ...offer, availableCount: matching.length, distanceMeters: distance, estimatedArrivalMinutes: nearest ? Math.max(3, Math.ceil(distance/250)) : 0, batteryPercent: nearest?.batteryPercent, supplySource: draft.serviceTimeMode === "scheduled" || !nearest || offer.unavailableReasons.length ? "headquarters" as const : "nearby" as const };
+        });
+      } catch (error: any) { wx.showToast({ title: error?.message || "运力加载失败", icon: "none" }); }
+    }
     const recommendedList = offers.filter((o) => o.recommended);
     const sel = offers.find((o) => o.modelId === draft.selectedVehicleModelId)
       || recommendedList[0]
@@ -86,7 +101,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/model-step", {
     if (!o.available) {
       wx.showModal({
         title: "车型适配提醒",
-        content: `${o.unavailableReasons.join("；") || "该车型可能不适合当前货物"}。仍要选择将提交总部审核。`,
+        content: `${o.unavailableReasons.join("；") || "该车型可能不适合当前货物"}。仍要选择将提交平台调度确认。`,
         cancelText: "返回重选",
         confirmText: "仍要选择",
         success: (result) => {
@@ -109,7 +124,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/model-step", {
     wx.navigateTo({ url: `/packages/delivery/pages/model-detail/index?modelId=${encodeURIComponent(id)}` });
   },
 
-  computeQuote(modelId: string) {
+  async computeQuote(modelId: string) {
     this.setData({ computing: true, expired: false });
     try {
       const draft = repo.getDraft(this.data.draftId);
@@ -117,7 +132,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/model-step", {
         this.setData({ computing: false });
         return;
       }
-      const q = pricingService.quote({ draft, modelId });
+      const q = isSharedMode() ? await sharedPricing.quote(draft, modelId) : pricingService.quote({ draft, modelId });
       this.setData({ estimatedTotal: q.totalAmountFen, computing: false });
     } catch (e: any) {
       wx.showToast({ title: e.message || "报价失败", icon: "none" });

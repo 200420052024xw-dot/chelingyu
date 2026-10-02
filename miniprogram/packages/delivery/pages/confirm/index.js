@@ -11,6 +11,10 @@ const order_2 = require("../../../../view-models/order");
 const clock_1 = require("../../../../adapters/clock");
 const cargo_1 = require("../../../../view-models/cargo");
 const page_performance_1 = require("../../../../utils/page-performance");
+const remote_1 = require("../../../../services/remote");
+const remote_2 = require("../../../../services/remote");
+const draft_1 = require("../../../../services/draft");
+const pricing_2 = require("../../../../domain/pricing");
 Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
     data: {
         draftId: "",
@@ -52,9 +56,9 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
     onUnload() {
         this._unloaded = true;
     },
-    refresh() {
+    async refresh() {
         var _a, _b, _c, _d, _e, _f, _g;
-        const draft = index_1.repo.getDraft(this.data.draftId);
+        let draft = index_1.repo.getDraft(this.data.draftId);
         if (!draft) {
             wx.showToast({ title: "草稿不存在", icon: "none" });
             setTimeout(() => wx.navigateBack(), 600);
@@ -64,6 +68,19 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
             wx.showToast({ title: "请先选择车型", icon: "none" });
             setTimeout(() => wx.navigateBack(), 600);
             return;
+        }
+        if ((0, remote_1.isSharedMode)()) {
+            try {
+                await remote_2.sharedPricing.syncModels();
+                const fresh = await remote_2.sharedPricing.quote(draft, draft.selectedVehicleModelId);
+                index_1.repo.upsertQuote(fresh);
+                draft = draft_1.draftService.attachQuote(draft.id, fresh.id, (0, pricing_2.computeInputFingerprint)(draft, draft.selectedVehicleModelId));
+            }
+            catch (error) {
+                this.setData({ loading: false });
+                wx.showToast({ title: (error === null || error === void 0 ? void 0 : error.message) || "报价失败", icon: "none" });
+                return;
+            }
         }
         const quote = index_1.repo.getQuote(draft.selectedQuoteId);
         if (!quote) {
@@ -95,7 +112,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
             specialLabel,
             vehicleImage: (_d = model === null || model === void 0 ? void 0 : model.imageUrl) !== null && _d !== void 0 ? _d : "/assets/vehicles/box-small.png",
             modelName: (_e = model === null || model === void 0 ? void 0 : model.name) !== null && _e !== void 0 ? _e : "",
-            modelTags: draft.dispatchSource === "headquarters" ? ["需总部确认"] : (model === null || model === void 0 ? void 0 : model.category) === "cold_chain" ? ["冷藏保鲜", "温控运输"] : (model === null || model === void 0 ? void 0 : model.category) === "box_medium" ? ["空间更大", "适合大件"] : ["适合当前货物", "性价比高"],
+            modelTags: draft.dispatchSource === "headquarters" || draft.dispatchSource === "platform" ? ["需平台调度确认"] : (model === null || model === void 0 ? void 0 : model.category) === "cold_chain" ? ["冷藏保鲜", "温控运输"] : (model === null || model === void 0 ? void 0 : model.category) === "box_medium" ? ["空间更大", "适合大件"] : ["适合当前货物", "性价比高"],
             modelMaxLoad: model ? `${model.maxLoadGrams / 1000} kg` : "",
             modelVolume: model ? (model.cargoVolumeLiters >= 1000 ? `${(model.cargoVolumeLiters / 1000).toFixed(1)} m³` : `${model.cargoVolumeLiters} L`) : "",
             modelBattery: quote.vehicleId ? `${(_g = (_f = index_1.repo.getVehicle(quote.vehicleId)) === null || _f === void 0 ? void 0 : _f.batteryPercent) !== null && _g !== void 0 ? _g : 0}%` : "—",
@@ -144,7 +161,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
     onEditTime() {
         wx.navigateTo({ url: `/pages/address-step/index?draftId=${this.data.draftId}&returnTo=confirm` });
     },
-    onSubmitOrder() {
+    async onSubmitOrder() {
         if (this.data.submitting)
             return;
         this.setData({ submitting: true });
@@ -157,13 +174,25 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
                 draft,
                 modelId: draft.selectedVehicleModelId,
             });
-            const order = order_1.orderService.create({
-                draftId: draft.id,
-                quoteId: q.id,
-                requestId: identity_1.identity.newRequestId(),
-            });
+            if ((0, remote_1.isSharedMode)()) {
+                const fresh = await remote_2.sharedPricing.quote(draft, draft.selectedVehicleModelId);
+                if (fresh.totalAmountFen !== q.totalAmountFen || fresh.pricingPolicyVersion !== q.pricingPolicyVersion || JSON.stringify(fresh.items) !== JSON.stringify(q.items)) {
+                    index_1.repo.upsertQuote(fresh);
+                    draft_1.draftService.attachQuote(draft.id, fresh.id, (0, pricing_2.computeInputFingerprint)(draft, draft.selectedVehicleModelId));
+                    await this.refresh();
+                    throw new Error("价格已更新，请确认新报价后再下单");
+                }
+            }
+            const requestKey = `${draft.id}:${draft.revision}`;
+            if (this._createRequestKey !== requestKey) {
+                this._createRequestKey = requestKey;
+                this._createRequestId = identity_1.identity.newRequestId();
+            }
+            const order = (0, remote_1.isSharedMode)()
+                ? await remote_1.sharedOrders.create(draft, q, this._createRequestId)
+                : order_1.orderService.create({ draftId: draft.id, quoteId: q.id, requestId: identity_1.identity.newRequestId() });
             order_draft_1.draftStore.clear();
-            if (order.status === "pending_headquarters_review") {
+            if (order.status === "pending_headquarters_review" || order.status === "pending_dispatch_review") {
                 this.setData({ createdOrderId: order.id, submitting: false });
                 this.openCreatedOrder(order.id);
                 return;
@@ -178,7 +207,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
         catch (e) {
             this.setData({ submitting: false, payModalOpen: false, payProcessing: false });
             wx.showToast({ title: e.message || "下单失败", icon: "none" });
-            if (e instanceof pricing_1.PricingError && e.code === "QUOTE_EXPIRED") {
+            if ((e instanceof pricing_1.PricingError && e.code === "QUOTE_EXPIRED") || (e === null || e === void 0 ? void 0 : e.code) === "QUOTE_EXPIRED" || (e === null || e === void 0 ? void 0 : e.code) === "QUOTE_CHANGED") {
                 setTimeout(() => {
                     wx.redirectTo({ url: `/packages/delivery/pages/model-step/index?draftId=${this.data.draftId}` });
                 }, 800);
@@ -214,12 +243,15 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
     },
     runPayment(orderId, scenario) {
         this.setData({ payProcessing: true });
-        setTimeout(() => {
+        setTimeout(async () => {
             if (this._unloaded)
                 return;
             try {
                 if (scenario === "success") {
-                    payment_1.paymentService.payMock({ orderId, requestId: identity_1.identity.newRequestId(), scenario: "success" });
+                    if ((0, remote_1.isSharedMode)())
+                        await remote_1.sharedOrders.pay(orderId, identity_1.identity.newRequestId(), "success");
+                    else
+                        payment_1.paymentService.payMock({ orderId, requestId: identity_1.identity.newRequestId(), scenario: "success" });
                     this.setData({ payProcessing: false, payModalOpen: false, submitting: false });
                     setTimeout(() => {
                         if (!this._unloaded)
@@ -227,7 +259,10 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
                     }, 400);
                 }
                 else {
-                    payment_1.paymentService.payMock({ orderId, requestId: identity_1.identity.newRequestId(), scenario: "fail" });
+                    if ((0, remote_1.isSharedMode)())
+                        await remote_1.sharedOrders.pay(orderId, identity_1.identity.newRequestId(), "fail");
+                    else
+                        payment_1.paymentService.payMock({ orderId, requestId: identity_1.identity.newRequestId(), scenario: "fail" });
                     this.setData({ payProcessing: false, payModalOpen: false, submitting: false });
                     wx.showToast({ title: "模拟支付失败，可在订单详情重试", icon: "none" });
                     setTimeout(() => {

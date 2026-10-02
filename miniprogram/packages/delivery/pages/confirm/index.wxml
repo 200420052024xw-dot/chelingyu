@@ -95,7 +95,7 @@
     </view>
     <view class="time-row press-scale {{draft.serviceTimeMode === 'scheduled' ? 'scheduled' : ''}}" hover-class="time-row-hover">
       <text class="time-mode">{{draft.serviceTimeMode === 'immediate' ? '立即用车' : '预约用车 · ' + scheduledLabel}}</text>
-      <text wx:if="{{draft.dispatchSource === 'headquarters'}}" class="time-estimate">需总部确认</text>
+      <text wx:if="{{draft.dispatchSource === 'headquarters' || draft.dispatchSource === 'platform'}}" class="time-estimate">需平台调度确认</text>
       <text wx:else class="time-estimate">预计 <text class="text-primary">{{quote.estimatedArrivalMinutes}}</text> 分钟内到达</text>
       <view class="address-arrow">›</view>
     </view>
@@ -128,7 +128,7 @@
       </view>
       <button class="btn-primary pay-btn" bindtap="onSubmitOrder" disabled="{{submitting}}">
         <text wx:if="{{submitting}}">提交中…</text>
-        <text wx:else>{{draft.dispatchSource === 'headquarters' ? '提交总部审核' : '确认下单并支付'}}</text>
+        <text wx:else>{{draft.dispatchSource === 'headquarters' || draft.dispatchSource === 'platform' ? '提交平台调度确认' : '确认下单并支付'}}</text>
       </button>
     </view>
   </view>

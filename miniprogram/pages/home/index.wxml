@@ -70,7 +70,7 @@
         <view class="capacity-info">
           <view class="capacity-label">服务状态</view>
           <view class="capacity-value status-value">正常运营</view>
-          <view class="capacity-detail">{{markers.length}} 辆模拟车辆待命</view>
+          <view class="capacity-detail">{{markers.length}} 辆可用车辆待命</view>
         </view>
         <view class="capacity-next">›</view>
       </view>

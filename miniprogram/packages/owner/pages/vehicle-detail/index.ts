@@ -5,6 +5,7 @@ import { subscribeDB } from "../../../../repositories/local-database";
 import { formatTimeRanges } from "../../../../view-models/cargo";
 import { APP_CONFIG } from "../../../../config/index";
 import { haversineMeters, formatDistance } from "../../../../adapters/geo";
+import { isSharedMode, sharedFleet } from "../../../../services/remote";
 
 interface PageData {
   vehicleId: string;
@@ -35,16 +36,18 @@ Page<PageData, any>(withPagePerformance<PageData, any>("packages/owner/pages/veh
     const id = query?.id as string;
     this.setData({ vehicleId: id });
     this.refresh();
-    instance.unsubscribe = subscribeDB(() => this.refresh());
+    if (!isSharedMode()) instance.unsubscribe = subscribeDB(() => this.refresh());
   },
+
+  onShow() { if (isSharedMode() && this.data.vehicleId) this.refresh(); },
 
   onUnload() {
     instance.unsubscribe?.();
   },
 
-  refresh() {
+  async refresh() {
     try {
-      const detail = ownerService.vehicleDetail(this.data.vehicleId);
+      const detail = isSharedMode() ? await sharedFleet.ownerVehicle(this.data.vehicleId) : ownerService.vehicleDetail(this.data.vehicleId);
       const userLoc = APP_CONFIG.demoCenter;
       const dist = detail.vehicle.location ? haversineMeters(detail.vehicle.location, userLoc) : 0;
       this.setData({
@@ -52,7 +55,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("packages/owner/pages/veh
         model: detail.model,
         rule: detail.rule ?? null,
         distanceText: formatDistance(dist),
-        tasks: detail.tasks,
+        tasks: detail.tasks as any,
       });
     } catch (e) {}
   },

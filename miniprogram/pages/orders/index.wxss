@@ -5,7 +5,7 @@
 }
 
 .tabs {
-  display: flex;
+  display: block;
   background: #fff;
   padding: 16rpx 0;
   position: sticky;
@@ -13,8 +13,10 @@
   z-index: 10;
   border-bottom: 1rpx solid var(--color-divider);
 }
+.tabs-inner { display: flex; width: 100%; }
 
 .tab {
+  flex: none;
   flex: 1;
   text-align: center;
   font-size: var(--font-body);
@@ -74,12 +76,16 @@
 }
 
 .order-route {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin: 16rpx 0;
-  flex-wrap: wrap;
+  margin: 22rpx 0;
+  padding: 18rpx;
+  background: #f7faf8;
+  border-radius: 18rpx;
 }
+.route-node { display: flex; align-items: flex-start; gap: 18rpx; }
+.route-node > view:last-child { min-width: 0; flex: 1; }
+.route-label { font-size: 22rpx; font-weight: 700; color: #537364; margin-bottom: 4rpx; }
+.route-detail { font-size: 23rpx; color: var(--color-text-muted); margin-top: 3rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.route-connector { width: 2rpx; height: 22rpx; border-left: 2rpx dashed #a7c3b2; margin: 5rpx 0 5rpx 7rpx; }
 
 .route-dot {
   width: 16rpx;
@@ -90,13 +96,6 @@
 
 .dot-pickup { background: var(--color-pickup); }
 .dot-dropoff { background: var(--color-dropoff); }
-
-.route-line {
-  flex: 1;
-  height: 2rpx;
-  border-top: 2rpx dashed var(--color-divider);
-  margin: 0 8rpx;
-}
 
 .route-name {
   font-size: var(--font-body);
@@ -139,3 +138,5 @@
   font-weight: 700;
   color: var(--color-primary-deep);
 }
+.order-schedule { color: #648575; font-size: 24rpx; margin-top: 14rpx; }
+.order-action { border: 0; border-radius: 16rpx; padding: 0 22rpx; height: 64rpx; line-height: 64rpx; background: #e6f7ec; color: #0d9054; font-size: 25rpx; font-weight: 700; margin: 0; }

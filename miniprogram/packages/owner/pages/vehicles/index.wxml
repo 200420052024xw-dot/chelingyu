@@ -45,7 +45,26 @@
     </view>
   </view>
 
+  <view class="list" wx:if="{{applications.length}}">
+    <view class="vehicle-card" wx:for="{{applications}}" wx:key="id">
+      <view class="v-head"><image class="v-img" src="{{item.imageUrl}}" mode="aspectFit"/><view class="v-info"><view class="v-name">{{item.vehicleNo}}</view><view class="v-loc">审核状态：{{item.status === 'pending' ? '待区级审核' : item.status === 'approved' ? '已通过' : '已驳回'}}</view><view class="v-loc" wx:if="{{item.reason}}">处理说明：{{item.reason}}</view></view></view>
+    </view>
+  </view>
+
+  <view class="list" wx:if="{{formOpen}}">
+    <view class="vehicle-card">
+      <view class="v-name">提交车辆入驻申请</view>
+      <input placeholder="车辆编号（字母、数字或横线）" value="{{vehicleNo}}" bindinput="onVehicleNo"/>
+      <picker range="{{modelOptions}}" range-key="name" bindchange="onModelPick"><view class="v-availability">车型：{{modelName || '请选择'}}</view></picker>
+      <picker range="{{areaOptions}}" range-key="name" bindchange="onAreaPick"><view class="v-availability">运营区域：{{areaName || '请选择'}}</view></picker>
+      <button bindtap="onChoosePhoto">{{imagePath ? '重新选择车辆照片' : '上传车辆照片'}}</button>
+      <image wx:if="{{imagePath}}" src="{{imagePath}}" mode="aspectFit" style="width: 240rpx; height: 160rpx"/>
+      <button class="btn-primary" loading="{{submitting}}" bindtap="onSubmitApplication">提交审核</button>
+      <button bindtap="onCloseForm">取消</button>
+    </view>
+  </view>
+
   <view class="bottom-action">
-    <button class="btn-primary" bindtap="onBindNew">+ 绑定车辆</button>
+    <button class="btn-primary" bindtap="onBindNew">+ {{formOpen ? '继续填写申请' : '添加车辆'}}</button>
   </view>
 </view>

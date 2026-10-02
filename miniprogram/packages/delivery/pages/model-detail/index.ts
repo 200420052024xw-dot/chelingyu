@@ -1,5 +1,6 @@
 import { repo } from "../../../../repositories/index";
 import { VEHICLE_PERFORMANCE } from "../../../../content/vehicle-performance";
+import { isSharedMode, sharedPricing } from "../../../../services/remote";
 
 Page({
   data: {
@@ -15,7 +16,8 @@ Page({
     speed: "",
     temperature: "",
   },
-  onLoad(query: { modelId?: string }) {
+  async onLoad(query: { modelId?: string }) {
+    if(isSharedMode()) await sharedPricing.syncModels().catch(()=>undefined);
     const model = repo.getVehicleModel(decodeURIComponent(query.modelId || ""));
     if (!model) return;
     const performance = VEHICLE_PERFORMANCE[model.id];

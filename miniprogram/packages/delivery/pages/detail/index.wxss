@@ -171,6 +171,11 @@
 .vehicle-info {
   flex: 1;
 }
+.vehicle-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12rpx; }
+.distance-to-user { max-width: 200rpx; text-align: right; font-size: 21rpx; color: #397a57; }
+.progress-open-hint { text-align: right; font-size: 22rpx; color: #397a57; padding-top: 12rpx; }
+.progress-modal { max-height: 75vh; }
+.progress-scroll { max-height: 55vh; margin: 18rpx 0; }
 
 .vehicle-name {
   font-size: var(--font-body);
@@ -310,56 +315,6 @@
   font-size: var(--font-caption);
   color: var(--color-text-muted);
   margin-top: 4rpx;
-}
-
-.demo-actions {
-  margin-top: 24rpx;
-  padding-top: 24rpx;
-  border-top: 1rpx dashed var(--color-divider);
-}
-
-.demo-title {
-  font-size: var(--font-caption);
-  color: var(--color-text-muted);
-  margin-bottom: 12rpx;
-}
-
-.demo-row {
-  display: flex;
-  gap: 12rpx;
-  flex-wrap: wrap;
-}
-
-.demo-btn {
-  background: var(--color-primary-soft);
-  color: var(--color-primary-deep);
-  padding: 16rpx 24rpx;
-  border-radius: 16rpx;
-  font-size: var(--font-caption);
-  font-weight: 600;
-  line-height: 1;
-  transition: transform var(--motion-fast) var(--ease-out),
-              background-color var(--motion-fast) var(--ease-out);
-}
-
-.demo-btn::after {
-  border: none;
-}
-
-.demo-btn.primary {
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.demo-btn.ghost {
-  background: transparent;
-  color: var(--color-text-muted);
-  border: 1rpx solid var(--color-divider);
-}
-
-.demo-btn-hover {
-  transform: scale(0.95);
-  background-color: var(--color-primary-tint);
 }
 
 /* 费用 */
@@ -522,3 +477,6 @@
 .modal-actions .btn-primary {
   flex: 1;
 }
+.route-map { display: block; width: 100%; height: 420rpx; border-radius: 18rpx; overflow: hidden; }
+.route-note { color: #7b9588; font-size: 22rpx; margin-top: 14rpx; line-height: 1.5; }
+.quote-change { color: #234b36; font-size: 27rpx; margin-top: 12rpx; }

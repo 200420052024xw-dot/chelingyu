@@ -227,7 +227,7 @@ export interface OrderDraft extends BaseEntity {
   scheduledPickupAt?: ISODateTime;
   cargo?: CargoInfo;
   selectedVehicleModelId?: ID;
-  dispatchSource?: "nearby" | "headquarters";
+  dispatchSource?: "nearby" | "headquarters" | "platform";
   headquartersConfirmed?: boolean;
   selectedQuoteId?: ID;
   /** 报价输入摘要，生成报价时锁定。 */
@@ -239,6 +239,8 @@ export type OrderType = "task_delivery" | "capacity_reservation";
 /** 履约状态 */
 export type OrderStatus =
   | "pending_headquarters_review"
+  | "pending_dispatch_review"
+  | "pending_customer_quote"
   | "pending_payment"
   | "paid"
   | "scheduled"
@@ -274,6 +276,8 @@ export interface DeliveryOrder extends BaseEntity {
   type: OrderType;
   customerId: ID;
   serviceRegionId: ID;
+  destinationServiceRegionId?: ID;
+  version?: number;
   operatorId?: ID;
   sender: DeliveryAddressSnapshot;
   receiver: DeliveryAddressSnapshot;
@@ -290,7 +294,14 @@ export interface DeliveryOrder extends BaseEntity {
   pricingPolicyVersion: number;
   pricingPolicyId: ID;
   status: OrderStatus;
-  dispatchSource?: "nearby" | "headquarters";
+  dispatchSource?: "nearby" | "headquarters" | "platform";
+  dispatchConfirmed?: boolean;
+  dispatchReviewReason?: string;
+  dispatchReviewedAt?: ISODateTime;
+  dispatchReviewerId?: ID;
+  proposedVehicleModelId?: ID;
+  proposedTotalAmountFen?: MoneyFen;
+  proposedPriceItems?: PriceItem[];
   headquartersConfirmed?: boolean;
   headquartersReviewReason?: string;
   headquartersReviewedAt?: ISODateTime;
@@ -556,7 +567,7 @@ export interface OrderDetailView {
   events: OrderStatusEvent[];
   payment?: Payment;
   refund?: Refund;
-  allowedActions: Array<"pay" | "cancel" | "advance" | "confirm_loaded" | "confirm_received" | "retry_pay">;
+  allowedActions: Array<"pay" | "cancel" | "advance" | "confirm_loaded" | "confirm_received" | "retry_pay" | "accept_quote">;
   assignedVehiclePublic?: NearbyVehicleView;
 }
 
