@@ -9,6 +9,7 @@ const page_performance_1 = require("../../utils/page-performance");
 const remote_1 = require("../../services/remote");
 let openingOrder = false;
 let locationRequestVersion = 0;
+let cooperationRequestVersion = 0;
 function layout() {
     try {
         const windowInfo = wx.getWindowInfo();
@@ -43,6 +44,9 @@ Page((0, page_performance_1.withPagePerformance)("home", {
         floatActionsOffset: 260,
         bottomCardHeight: 240,
         supportContactOpen: false,
+        cooperationContactOpen: false,
+        cooperationContact: null,
+        cooperationAvailable: false,
     },
     onLoad() {
         this.hasShownHome = false;
@@ -64,6 +68,7 @@ Page((0, page_performance_1.withPagePerformance)("home", {
         this.setData({ unreadCount: notification_1.notificationService.unreadCount() });
         openingOrder = false;
         this.setData({ openingOrder: false });
+        this.refreshCooperationContact();
     },
     onResize() {
         const dimensions = layout();
@@ -189,6 +194,31 @@ Page((0, page_performance_1.withPagePerformance)("home", {
             arrivalMinutes: 0,
             markers,
         });
+        this.refreshCooperationContact();
+    },
+    async refreshCooperationContact() {
+        const requestVersion = ++cooperationRequestVersion;
+        if (!(0, remote_1.isSharedMode)()) {
+            this.setData({ cooperationAvailable: false, cooperationContact: null, cooperationContactOpen: false });
+            return;
+        }
+        let adcode = "";
+        if (this.data.locationMode !== "none") {
+            try {
+                adcode = (await (0, tencent_maps_1.reverseGeocodeByWebService)({ latitude: this.data.mapLat, longitude: this.data.mapLng })).adcode;
+            }
+            catch (_) { /* No region match: use the headquarters contact if configured. */ }
+        }
+        try {
+            const contact = await remote_1.sharedCooperation.contact(adcode);
+            if (requestVersion !== cooperationRequestVersion)
+                return;
+            this.setData({ cooperationContact: contact, cooperationAvailable: !!contact, cooperationContactOpen: !!contact && this.data.cooperationContactOpen });
+        }
+        catch (_) {
+            if (requestVersion === cooperationRequestVersion)
+                this.setData({ cooperationContact: null, cooperationAvailable: false, cooperationContactOpen: false });
+        }
     },
     onMarkerTap(e) {
         var _a, _b;
@@ -231,6 +261,13 @@ Page((0, page_performance_1.withPagePerformance)("home", {
     },
     onCallSupport() {
         this.setData({ supportContactOpen: true });
+    },
+    onOpenCooperation() {
+        if (this.data.cooperationContact)
+            this.setData({ cooperationContactOpen: true });
+    },
+    onCloseCooperation() {
+        this.setData({ cooperationContactOpen: false });
     },
     onCloseSupportContact() {
         this.setData({ supportContactOpen: false });

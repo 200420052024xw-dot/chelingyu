@@ -4,7 +4,7 @@ import { locationAdapter } from "../../adapters/location";
 import { homeDemoFleet } from "../../services/home-demo-fleet";
 import { reverseGeocodeByWebService } from "../../adapters/tencent-maps";
 import { withPagePerformance } from "../../utils/page-performance";
-import { isSharedMode, sharedFleet } from "../../services/remote";
+import { isSharedMode, sharedCooperation, sharedFleet, type CooperationContactView } from "../../services/remote";
 
 interface PageData {
   regionLabel: string;
@@ -32,10 +32,14 @@ interface PageData {
   floatActionsOffset: number;
   bottomCardHeight: number;
   supportContactOpen: boolean;
+  cooperationContactOpen: boolean;
+  cooperationContact: CooperationContactView | null;
+  cooperationAvailable: boolean;
 }
 
 let openingOrder = false;
 let locationRequestVersion = 0;
+let cooperationRequestVersion = 0;
 
 function layout() {
   try {
@@ -71,6 +75,9 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
     floatActionsOffset: 260,
     bottomCardHeight: 240,
     supportContactOpen: false,
+    cooperationContactOpen: false,
+    cooperationContact: null,
+    cooperationAvailable: false,
   },
 
   onLoad() {
@@ -96,6 +103,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
     this.setData({ unreadCount: notificationService.unreadCount() });
     openingOrder = false;
     this.setData({ openingOrder: false });
+    this.refreshCooperationContact();
   },
 
   onResize() {
@@ -214,6 +222,24 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
       arrivalMinutes: 0,
       markers,
     });
+    this.refreshCooperationContact();
+  },
+
+  async refreshCooperationContact() {
+    const requestVersion = ++cooperationRequestVersion;
+    if (!isSharedMode()) { this.setData({ cooperationAvailable: false, cooperationContact: null, cooperationContactOpen: false }); return; }
+    let adcode = "";
+    if (this.data.locationMode !== "none") {
+      try { adcode = (await reverseGeocodeByWebService({ latitude: this.data.mapLat, longitude: this.data.mapLng })).adcode; }
+      catch (_) { /* No region match: use the headquarters contact if configured. */ }
+    }
+    try {
+      const contact = await sharedCooperation.contact(adcode);
+      if (requestVersion !== cooperationRequestVersion) return;
+      this.setData({ cooperationContact: contact, cooperationAvailable: !!contact, cooperationContactOpen: !!contact && this.data.cooperationContactOpen });
+    } catch (_) {
+      if (requestVersion === cooperationRequestVersion) this.setData({ cooperationContact: null, cooperationAvailable: false, cooperationContactOpen: false });
+    }
   },
 
   onMarkerTap(e: any) {
@@ -261,6 +287,14 @@ Page<PageData, any>(withPagePerformance<PageData, any>("home", {
 
   onCallSupport() {
     this.setData({ supportContactOpen: true });
+  },
+
+  onOpenCooperation() {
+    if (this.data.cooperationContact) this.setData({ cooperationContactOpen: true });
+  },
+
+  onCloseCooperation() {
+    this.setData({ cooperationContactOpen: false });
   },
 
   onCloseSupportContact() {

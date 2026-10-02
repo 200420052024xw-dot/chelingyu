@@ -291,8 +291,14 @@ export interface DeliveryOrder extends BaseEntity {
   priceItems: PriceItem[];
   totalAmountFen: MoneyFen;
   /** 锁定的规则版本 */
-  pricingPolicyVersion: number;
-  pricingPolicyId: ID;
+    pricingPolicyVersion: number;
+    pricingPolicyId: ID;
+  /** 服务端路线规划的计费里程，演示旧单可能为空。 */
+  routeDistanceMeters?: DistanceMeter;
+  routeDistanceSource?: "tencent" | "manual" | "demo";
+  routeReviewRequired?: boolean;
+  routeReviewEvidence?: string;
+  proposedRouteDistanceMeters?: DistanceMeter;
   status: OrderStatus;
   dispatchSource?: "nearby" | "headquarters" | "platform";
   dispatchConfirmed?: boolean;
@@ -343,6 +349,9 @@ export interface Quote extends BaseEntity {
   pricingPolicyId: ID;
   pricingPolicyVersion: number;
   routeDistanceMeters: DistanceMeter;
+  routeDistanceSource?: "tencent" | "manual" | "demo";
+  routeReviewRequired?: boolean;
+  routeDurationMinutes?: number;
   estimatedArrivalMinutes: number;
   items: PriceItem[];
   totalAmountFen: MoneyFen;

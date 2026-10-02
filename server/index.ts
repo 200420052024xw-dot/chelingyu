@@ -4,13 +4,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DeliveryOrder, OrderDraft, Quote } from "../miniprogram/contracts/types";
 import { acceptQuote, cancel, createOrder, customerConfirm, dispatch, eligibleVehicles, markException, orderDetail, payMock, progress, review } from "./orders";
-import { ApiError, canOperateOrder, canSeeOrder, fail, getOrder, hashPassword, id, now, seedState, StateStore, verifyPassword, visibleRegions, type AdminAccount, type SharedState } from "./state";
+import { ApiError, areaFor, canOperateOrder, canSeeOrder, effectiveCooperationContact, fail, getOrder, hashPassword, id, now, orderInRegionView, regionForAdcode, regionViewScope, seedState, StateStore, verifyPassword, visibleRegions, type AdminAccount, type CooperationContact, type SharedState } from "./state";
 import { pricingStatus, quoteFor, savePricing } from "./pricing";
 import { saveImage, uploadDirectory } from "./uploads";
 import { computeInputFingerprint } from "../miniprogram/domain/pricing";
+import { drivingRoute, reverseAdcode } from "./maps";
 import type { PriceKey, PriceRange } from "./state";
 
-interface Config { secret: string; appId?: string; appSecret?: string; demoAuth: boolean; production: boolean; }
+interface Config { secret: string; appId?: string; appSecret?: string; mapsKey?: string; mapsRequester?: typeof fetch; demoAuth: boolean; production: boolean; }
 type Principal = { kind: "customer"; id: string } | { kind: "admin"; id: string };
 const envelope = (data: unknown) => ({ code: "OK", msg: "", data });
 const asyncRoute = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { Promise.resolve(fn(req,res)).catch(next); };
@@ -86,7 +87,13 @@ export function createApp(store: StateStore, config: Config) {
   app.get("/api/admin/accounts", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
     if(a.level==="district") fail(403,"FORBIDDEN","区级不能管理运营账号");
-    res.json(envelope(await store.read(s=>s.admins.filter(item=>item.level===({headquarters:"province",province:"city",city:"district"} as Record<string,string>)[a.level] && (a.level==="headquarters" || s.regions.find(r=>r.id===item.regionId)?.parentId===a.regionId)).map(({passwordHash,...account})=>account))));
+    res.json(envelope(await store.read(s=>{
+      const scope=regionViewScope(s,a,String(req.query.regionId||""));
+      const directLevel=({headquarters:"province",province:"city",city:"district"} as Record<string,string>)[a.level];
+      return s.admins.filter(item=>item.id!==a.id&&!!item.regionId&&scope.has(item.regionId)).map(({passwordHash,...account})=>({
+        ...account,canManage:account.level===directLevel&&(a.level==="headquarters"||s.regions.find(r=>r.id===account.regionId)?.parentId===a.regionId)
+      }));
+    })));
   }));
   app.post("/api/admin/accounts", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
@@ -111,16 +118,77 @@ export function createApp(store: StateStore, config: Config) {
     res.json(envelope(true));
   }));
 
-  app.get("/api/regions", asyncRoute(async (_req,res) => { res.json(envelope(await store.read(s => ({ regions:s.regions, areas:s.areas })))); }));
-  app.get("/api/admin/regions", asyncRoute(async (req,res) => { const a=await admin(req,config,store);res.json(envelope(await store.read(s=>{const scope=visibleRegions(s,a);return {regions:s.regions.filter(r=>scope.has(r.id)),areas:s.areas.filter(x=>scope.has(x.regionId))};}))); }));
+  app.get("/api/regions", asyncRoute(async (_req,res) => { res.json(envelope(await store.read(s => ({ regions:s.regions.filter(r=>r.enabled!==false), areas:s.areas.filter(area=>s.regions.find(r=>r.id===area.regionId)?.enabled!==false) })))); }));
+  app.get("/api/admin/regions", asyncRoute(async (req,res) => { const a=await admin(req,config,store);res.json(envelope(await store.read(s=>{const scope=visibleRegions(s,a);return {regions:s.regions.filter(r=>scope.has(r.id)),areas:s.areas.filter(x=>scope.has(x.regionId)),history:a.level==="headquarters"?s.regionHistory.slice(-20).reverse():[]};}))); }));
+  app.post("/api/admin/regions", asyncRoute(async (req,res) => {
+    const a=await admin(req,config,store);
+    if(a.level!=="headquarters") fail(403,"FORBIDDEN","仅总部可创建行政区域");
+    const regionId=String(req.body?.id||"").trim(),name=String(req.body?.name||"").trim(),level=String(req.body?.level||""),parentId=String(req.body?.parentId||"").trim(),adcode=String(req.body?.adcode||"").trim();
+    if(!/^[a-zA-Z0-9_]{2,32}$/.test(regionId)||!name||name.length>40||!["province","city","district"].includes(level)||!!adcode&&!/^\d{6}$/.test(adcode)) fail(400,"VALIDATION_ERROR","区域编号、名称、层级或行政区划代码无效");
+    const value=await store.change(s=>{
+      if(s.regions.some(r=>r.id===regionId)) fail(409,"CONFLICT","区域编号已存在");
+      const parent=parentId?s.regions.find(r=>r.id===parentId):undefined;
+      if((level==="province"&&parentId)||(level==="city"&&parent?.level!=="province")||(level==="district"&&parent?.level!=="city")) fail(400,"VALIDATION_ERROR","行政层级或上级区域无效");
+      if(adcode&&parent?.adcode&&adcode.slice(0,level==="city"?2:4)!==parent.adcode.slice(0,level==="city"?2:4)) fail(400,"VALIDATION_ERROR","行政区划代码与上级区域不符");
+      if(s.regions.some(r=>r.parentId===(parentId||undefined)&&r.name===name)) fail(409,"CONFLICT","同一上级下区域名称已存在");
+      if(adcode&&s.regions.some(r=>r.adcode===adcode)) fail(409,"CONFLICT","行政区划代码已使用");
+      const source=s.pricing[parentId||"platform"]||fail(409,"PRICE_POLICY_INVALID","上级价格规则不存在");
+      const region={id:regionId,name,level:level as "province"|"city"|"district",parentId:parentId||undefined,cityId:level==="city"?regionId:level==="district"?parentId:undefined,adcode:adcode||undefined,enabled:false};
+      s.regions.push(region);
+      s.pricing[regionId]={regionId,version:1,ranges:structuredClone(source.ranges),updatedAt:now()};
+      s.regionHistory.push({id:id("region_change"),regionId,actorId:a.id,actorName:a.name,action:"created",at:now()});
+      return region;
+    });res.status(201).json(envelope(value));
+  }));
+  app.put("/api/admin/regions/:id/adcode", asyncRoute(async (req,res) => {
+    const a=await admin(req,config,store);
+    if(a.level!=="headquarters") fail(403,"FORBIDDEN","仅总部可维护行政区划代码");
+    const adcode=String(req.body?.adcode||"").trim();
+    if(adcode&&!/^\d{6}$/.test(adcode)) fail(400,"VALIDATION_ERROR","行政区划代码应为六位数字");
+    const value=await store.change(s=>{
+      const region=s.regions.find(r=>r.id===req.params.id)||fail(404,"NOT_FOUND","区域不存在");
+      if(adcode&&s.regions.some(r=>r.id!==region.id&&r.adcode===adcode)) fail(409,"CONFLICT","行政区划代码已使用");
+      const parent=s.regions.find(r=>r.id===region.parentId);
+      if(adcode&&parent?.adcode&&adcode.slice(0,region.level==="city"?2:4)!==parent.adcode.slice(0,region.level==="city"?2:4)) fail(400,"VALIDATION_ERROR","行政区划代码与上级区域不符");
+      if(adcode&&s.regions.some(child=>child.parentId===region.id&&!!child.adcode&&child.adcode.slice(0,child.level==="city"?2:4)!==adcode.slice(0,child.level==="city"?2:4))) fail(400,"VALIDATION_ERROR","现有下级区域代码与新代码不符");
+      const beforeAdcode=region.adcode;
+      region.adcode=adcode||undefined;
+      s.regionHistory.push({id:id("region_change"),regionId:region.id,actorId:a.id,actorName:a.name,action:"adcode_updated",beforeAdcode,afterAdcode:region.adcode,at:now()});
+      return region;
+    });res.json(envelope(value));
+  }));
+  app.get("/api/cooperation-contact", asyncRoute(async (req,res) => {
+    const adcode=String(req.query.adcode||"").trim();
+    if(adcode&&!/^\d{6}$/.test(adcode)) fail(400,"VALIDATION_ERROR","行政区划代码无效");
+    res.json(envelope(await store.read(s=>effectiveCooperationContact(s,regionForAdcode(s,adcode)?.id))));
+  }));
+  app.get("/api/admin/cooperation-contact", asyncRoute(async (req,res) => {
+    const a=await admin(req,config,store);
+    const ownRegionId=a.regionId||"platform",regionId=String(req.query.regionId||ownRegionId);
+    res.json(envelope(await store.read(s=>{
+      if(regionId==="platform"){if(a.level!=="headquarters") fail(403,"FORBIDDEN","无权查看平台联系人");}
+      else regionViewScope(s,a,regionId);
+      return {regionId,editable:regionId===ownRegionId,configured:s.cooperationContacts[regionId]||null,effective:effectiveCooperationContact(s,regionId),history:s.contactHistory.filter(item=>item.regionId===regionId).slice(-10).reverse()};
+    })));
+  }));
+  app.put("/api/admin/cooperation-contact", asyncRoute(async (req,res) => {
+    const a=await admin(req,config,store);
+    const regionId=a.regionId||"platform",teamName=String(req.body?.teamName||"").trim(),phone=String(req.body?.phone||"").trim(),wechat=String(req.body?.wechat||"").trim(),email=String(req.body?.email||"").trim();
+    if(!teamName||teamName.length>80||(!phone&&!wechat&&!email)||phone.length>40||wechat.length>64||email.length>120||!!email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(400,"VALIDATION_ERROR","请填写接洽团队和至少一种有效联系方式");
+    const value=await store.change(s=>{
+      const before=s.cooperationContacts[regionId]?structuredClone(s.cooperationContacts[regionId]):undefined;
+      const after:CooperationContact={regionId,teamName,phone:phone||undefined,wechat:wechat||undefined,email:email||undefined,updatedAt:now(),updatedBy:a.id};
+      s.cooperationContacts[regionId]=after;
+      s.contactHistory.push({id:id("contact_change"),regionId,actorId:a.id,actorName:a.name,before,after:structuredClone(after),at:after.updatedAt});
+      return after;
+    });res.json(envelope(value));
+  }));
   app.get("/api/models", asyncRoute(async (_req,res) => { res.json(envelope(await store.read(s => s.models.filter(m=>m.enabled)))); }));
   app.get("/api/admin/overview", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
     const value=await store.read(s=>{
-      const scope=visibleRegions(s,a);
       const requested=String(req.query.regionId||a.regionId||"");
-      if(requested && !scope.has(requested)) fail(403,"FORBIDDEN","无权查看该区域");
-      const included=requested ? new Set([requested,...s.regions.filter(r=>{let current=r;while(current.parentId){if(current.parentId===requested)return true;current=s.regions.find(x=>x.id===current.parentId)!;if(!current)break;}return false}).map(r=>r.id)]) : scope;
+      const included=regionViewScope(s,a,requested);
       const areas=s.areas.filter(x=>included.has(x.regionId));
       const areaIds=new Set(areas.map(x=>x.id));
       const orders=s.orders.filter(o=>areaIds.has(o.serviceRegionId));
@@ -137,10 +205,13 @@ export function createApp(store: StateStore, config: Config) {
   app.get("/api/admin/pricing", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
     res.json(envelope(await store.read(s=>{
-      const regionId=a.level==="headquarters"?"platform":a.regionId!;
+      const ownRegionId=a.level==="headquarters"?"platform":a.regionId!;
+      const regionId=String(req.query.regionId||ownRegionId);
+      if(regionId!=="platform") regionViewScope(s,a,regionId);
+      else if(a.level!=="headquarters") fail(403,"FORBIDDEN","无权查看平台价格");
       const own=pricingStatus(s,regionId);
       const children=s.regions.filter(r=>r.parentId===(regionId==="platform"?undefined:regionId)).map(r=>({ ...pricingStatus(s,r.id), region:s.regions.find(x=>x.id===r.id) }));
-      return { ...own, children, history:s.pricingHistory.filter(x=>x.regionId===regionId).slice(-10).reverse() };
+      return { ...own, editable:regionId===ownRegionId, children, history:s.pricingHistory.filter(x=>x.regionId===regionId).slice(-10).reverse() };
     })));
   }));
   app.put("/api/admin/pricing", asyncRoute(async (req,res) => {
@@ -158,16 +229,48 @@ export function createApp(store: StateStore, config: Config) {
     const draft=req.body?.draft as OrderDraft;
     const modelId=String(req.body?.modelId||"");
     if(!draft?.sender||!draft.receiver||!draft.cargo||!modelId) fail(400,"VALIDATION_ERROR","报价资料不完整");
-    const value=await store.read(s=>{
+    const mapKey=config.mapsKey||"";
+    if(config.production&&!mapKey) fail(503,"MAP_UNAVAILABLE","地图服务未配置，暂不能生成报价");
+    let routeDistanceMeters=0,estimatedArrivalMinutes=0,pickupAdcode="",destinationAdcode="",routeReviewRequired=false;
+    if(mapKey){
+      const [pickup,destination,route]=await Promise.all([
+        reverseAdcode(draft.sender!.location,mapKey,config.mapsRequester),reverseAdcode(draft.receiver!.location,mapKey,config.mapsRequester),drivingRoute(draft.sender!.location,draft.receiver!.location,mapKey,config.mapsRequester),
+      ]);
+      if(pickup.kind!=="resolved") return fail(503,"MAP_UNAVAILABLE","取货地址归属暂无法核实，请稍后重试");
+      if(destination.kind!=="resolved") return fail(503,"MAP_UNAVAILABLE","收货地址归属暂无法核实，请稍后重试");
+      if(pickup.adcode.slice(0,4)!==destination.adcode.slice(0,4)) fail(400,"OUT_OF_SERVICE","目前仅支持同城配送");
+      if(route.kind==="unknown") return fail(503,"MAP_UNAVAILABLE","路线暂无法核实，请稍后重试");
+      if(route.kind==="unreachable") routeReviewRequired=true;
+      else {routeDistanceMeters=route.distanceMeters;estimatedArrivalMinutes=route.durationMinutes;}
+      pickupAdcode=pickup.adcode;destinationAdcode=destination.adcode;
+    }
+    const value=await store.change(s=>{
+      if(mapKey){
+        const fromArea=areaFor(s,draft.sender!),toArea=areaFor(s,draft.receiver!);
+        const fromCode=s.regions.find(region=>region.id===fromArea.regionId)?.adcode;
+        const toCode=s.regions.find(region=>region.id===toArea.regionId)?.adcode;
+        if(fromCode&&fromCode!==pickupAdcode) fail(400,"OUT_OF_SERVICE","取货坐标与配置的运营区不一致");
+        if(toCode&&toCode!==destinationAdcode) fail(400,"OUT_OF_SERVICE","送达坐标与配置的运营区不一致");
+      }
       const model=s.models.find(m=>m.id===modelId&&m.enabled)||fail(404,"NOT_FOUND","车型不存在");
-      const price=quoteFor(s,draft.sender!,draft.receiver!,draft.cargo!,model);
+      const price=quoteFor(s,draft.sender!,draft.receiver!,draft.cargo!,model,routeDistanceMeters||undefined);
       const timestamp=now();
-      return {id:id("quote"),orderDraftId:draft.id,draftRevision:draft.revision,inputFingerprint:computeInputFingerprint(draft,modelId),customerId:userId,vehicleModelId:modelId,pricingPolicyId:price.policyId,pricingPolicyVersion:price.policyVersion,routeDistanceMeters:0,estimatedArrivalMinutes:0,items:price.items,totalAmountFen:price.total,expiresAt:new Date(Date.now()+5*60_000).toISOString(),createdAt:timestamp,updatedAt:timestamp} as Quote;
+      const quote={id:id("quote"),orderDraftId:draft.id,draftRevision:draft.revision,inputFingerprint:computeInputFingerprint(draft,modelId),customerId:userId,vehicleModelId:modelId,pricingPolicyId:price.policyId,pricingPolicyVersion:price.policyVersion,routeDistanceMeters,routeDistanceSource:routeReviewRequired?undefined:mapKey?"tencent":"demo",routeReviewRequired,routeDurationMinutes:estimatedArrivalMinutes,estimatedArrivalMinutes:0,items:routeReviewRequired?[]:price.items,totalAmountFen:routeReviewRequired?0:price.total,expiresAt:new Date(Date.now()+5*60_000).toISOString(),createdAt:timestamp,updatedAt:timestamp} as Quote;
+      s.quotes.push(quote);
+      s.quotes=s.quotes.filter(item=>Date.parse(item.expiresAt)>Date.now());
+      return quote;
     });res.json(envelope(value));
   }));
   app.post("/api/orders", asyncRoute(async (req,res) => {
     const userId = customer(req,config);
-    const value = await store.change(s => createOrder(s,userId,{ draft:req.body?.draft as OrderDraft, quote:req.body?.quote as Quote, requestId:String(req.body?.requestId || "") }));
+    const value = await store.change(s => {
+      const requestId=String(req.body?.requestId||"");
+      const existingId=s.requests[`${userId}:create:${requestId}`];
+      if(requestId&&existingId) return getOrder(s,existingId);
+      const quoteId=String(req.body?.quote?.id||"");
+      const quote=s.quotes.find(item=>item.id===quoteId&&item.customerId===userId)||fail(409,"QUOTE_EXPIRED","请重新获取报价");
+      return createOrder(s,userId,{ draft:req.body?.draft as OrderDraft, quote, requestId });
+    });
     res.status(201).json(envelope(value));
   }));
   app.get("/api/orders", asyncRoute(async (req,res) => {
@@ -255,7 +358,8 @@ export function createApp(store: StateStore, config: Config) {
   app.get("/api/admin/dashboard", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
     const value=await store.read(s=>{
-      const orders=s.orders.filter(o=>canSeeOrder(s,a,o));
+      const scope=regionViewScope(s,a,String(req.query.regionId||""));
+      const orders=s.orders.filter(o=>canSeeOrder(s,a,o)&&orderInRegionView(s,a,scope,o));
       const count=(...statuses:string[])=>orders.filter(o=>statuses.includes(o.status)).length;
       const dueSoon=orders.filter(o=>o.scheduledPickupAt && Date.parse(o.scheduledPickupAt)>Date.now() && Date.parse(o.scheduledPickupAt)<Date.now()+2*3600_000 && !["completed","cancelled","failed"].includes(o.status)).length;
       return { pendingReview:count("pending_dispatch_review"), pendingPayment:count("pending_payment","pending_customer_quote"), pendingDispatch:count("paid","scheduled","matching"), inProgress:count("dispatched","vehicle_to_pickup","awaiting_loading","delivering","arrived"), dueSoon, exceptions:count("failed"), todayNew:orders.filter(o=>o.createdAt.slice(0,10)===now().slice(0,10)).length };
@@ -266,25 +370,26 @@ export function createApp(store: StateStore, config: Config) {
     const page=Math.max(1,Number(req.query.page)||1),pageSize=20;
     const status=String(req.query.status||""),search=String(req.query.search||"").trim(),region=String(req.query.region||""),from=String(req.query.from||""),to=String(req.query.to||"");
     const value=await store.read(s=>{
-      const all=s.orders.filter(o=>canSeeOrder(s,a,o) && (!status||o.status===status) && (!search||o.orderNo.includes(search)||o.sender.contactName.includes(search)||o.sender.contactMobile.includes(search)) && (!region||s.areas.find(area=>area.id===o.serviceRegionId)?.regionId===region) && (!from||o.createdAt.slice(0,10)>=from) && (!to||o.createdAt.slice(0,10)<=to)).sort((x,y)=>y.createdAt.localeCompare(x.createdAt));
-      return { items:all.slice((page-1)*pageSize,page*pageSize).map(o=>({ ...orderSummary(o), pickupRegion:s.areas.find(area=>area.id===o.serviceRegionId)?.name, destinationRegion:s.areas.find(area=>area.id===o.destinationServiceRegionId)?.name })),total:all.length,page,pageSize,totalPages:Math.ceil(all.length/pageSize) };
+      const scope=regionViewScope(s,a,String(req.query.regionId||""));
+      const all=s.orders.filter(o=>canSeeOrder(s,a,o) && orderInRegionView(s,a,scope,o) && (!status||o.status===status) && (!search||o.orderNo.includes(search)||o.sender.contactName.includes(search)||o.sender.contactMobile.includes(search)) && (!region||s.areas.find(area=>area.id===o.serviceRegionId)?.regionId===region) && (!from||o.createdAt.slice(0,10)>=from) && (!to||o.createdAt.slice(0,10)<=to)).sort((x,y)=>y.createdAt.localeCompare(x.createdAt));
+      return { items:all.slice((page-1)*pageSize,page*pageSize).map(o=>({ ...orderSummary(o), pickupRegion:s.areas.find(area=>area.id===o.serviceRegionId)?.name, destinationRegion:s.areas.find(area=>area.id===o.destinationServiceRegionId)?.name, canOperate:canOperateOrder(s,a,o)&&(!o.routeReviewRequired||(a.level==="district"&&s.areas.find(area=>area.id===o.serviceRegionId)?.regionId===a.regionId)) })),total:all.length,page,pageSize,totalPages:Math.ceil(all.length/pageSize) };
     }); res.json(envelope(value));
   }));
   app.get("/api/admin/orders/:id", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
-    const value=await store.read(s=>{ const o=getOrder(s,String(req.params.id)); if(!canSeeOrder(s,a,o)) fail(403,"FORBIDDEN","无权查看此区域订单"); return { ...orderDetail(s,o), audit:s.audit.filter(x=>x.orderId===o.id), canOperate:canOperateOrder(s,a,o), candidateVehicles:canOperateOrder(s,a,o)&&["paid","scheduled","matching"].includes(o.status)?eligibleVehicles(s,o).map(v=>({ id:v.id,vehicleNo:v.vehicleNo,batteryPercent:v.batteryPercent,area:s.areas.find(area=>area.id===v.serviceRegionId)?.name,owner:s.owners.find(owner=>owner.id===v.ownerId)?.name })):[] }; });
+    const value=await store.read(s=>{ const o=getOrder(s,String(req.params.id)); if(!canSeeOrder(s,a,o)) fail(403,"FORBIDDEN","无权查看此区域订单"); const canOperate=canOperateOrder(s,a,o)&&(!o.routeReviewRequired||(a.level==="district"&&s.areas.find(area=>area.id===o.serviceRegionId)?.regionId===a.regionId));return { ...orderDetail(s,o), audit:s.audit.filter(x=>x.orderId===o.id), canOperate, candidateVehicles:canOperate&&["paid","scheduled","matching"].includes(o.status)?eligibleVehicles(s,o).map(v=>({ id:v.id,vehicleNo:v.vehicleNo,batteryPercent:v.batteryPercent,area:s.areas.find(area=>area.id===v.serviceRegionId)?.name,owner:s.owners.find(owner=>owner.id===v.ownerId)?.name })):[] }; });
     res.json(envelope(value));
   }));
-  app.post("/api/admin/orders/:id/review", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.change(s=>{ const o=getOrder(s,String(req.params.id)); guardVersion(o,req.body?.expectedVersion); return review(s,a,o.id,req.body?.decision==="rejected"?"rejected":"approved",String(req.body?.reason||""),req.body?.replacementModelId); }); res.json(envelope(value)); }));
+  app.post("/api/admin/orders/:id/review", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.change(s=>{ const o=getOrder(s,String(req.params.id)); guardVersion(o,req.body?.expectedVersion); return review(s,a,o.id,req.body?.decision==="rejected"?"rejected":"approved",String(req.body?.reason||""),req.body?.replacementModelId,req.body?.manualDistanceMeters,String(req.body?.routeEvidence||"")); }); res.json(envelope(value)); }));
   app.post("/api/admin/orders/:id/dispatch", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.change(s=>{ const o=getOrder(s,String(req.params.id)); guardVersion(o,req.body?.expectedVersion); return dispatch(s,a,o.id,String(req.body?.vehicleId||""),String(req.body?.note||"")); }); res.json(envelope(value)); }));
   app.post("/api/admin/orders/:id/progress", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.change(s=>{ const o=getOrder(s,String(req.params.id)); guardVersion(o,req.body?.expectedVersion); return progress(s,a,o.id,req.body?.status,String(req.body?.note||"")); }); res.json(envelope(value)); }));
   app.post("/api/admin/orders/:id/exception", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.change(s=>{ const o=getOrder(s,String(req.params.id)); guardVersion(o,req.body?.expectedVersion); return markException(s,a,o.id,String(req.body?.reason||"")); }); res.json(envelope(value)); }));
-  app.get("/api/admin/notifications", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.read(s=>{ const regions=visibleRegions(s,a); return s.notices.filter(n=>regions.has(n.audienceRegionId)).sort((x,y)=>y.at.localeCompare(x.at)).map(n=>({ ...n,read:n.readBy.includes(a.id) })); }); res.json(envelope(value)); }));
+  app.get("/api/admin/notifications", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.read(s=>{ const regions=regionViewScope(s,a,String(req.query.regionId||"")); return s.notices.filter(n=>regions.has(n.audienceRegionId)).sort((x,y)=>y.at.localeCompare(x.at)).map(n=>({ ...n,read:n.readBy.includes(a.id) })); }); res.json(envelope(value)); }));
   app.put("/api/admin/notifications/:id/read", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.change(s=>{ const n=s.notices.find(n=>n.id===req.params.id)||fail(404,"NOT_FOUND","通知不存在"); if(!visibleRegions(s,a).has(n.audienceRegionId)) fail(403,"FORBIDDEN","无权查看通知"); if(!n.readBy.includes(a.id)) n.readBy.push(a.id); return n; }); res.json(envelope(value)); }));
-  app.get("/api/admin/fleet", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.read(s=>{ const scope=visibleRegions(s,a); return s.vehicles.filter(v=>scope.has(s.areas.find(area=>area.id===v.serviceRegionId)?.regionId||"")).map(v=>({ ...v,area:s.areas.find(area=>area.id===v.serviceRegionId)?.name,owner:s.owners.find(o=>o.id===v.ownerId)?.name,availability:s.availability.find(r=>r.vehicleId===v.id),activeReservations:s.reservations.filter(r=>r.vehicleId===v.id && !["released","cancelled"].includes(r.status)).length })); }); res.json(envelope(value)); }));
+  app.get("/api/admin/fleet", asyncRoute(async (req,res) => { const a=await admin(req,config,store); const value=await store.read(s=>{ const scope=regionViewScope(s,a,String(req.query.regionId||"")); return s.vehicles.filter(v=>scope.has(s.areas.find(area=>area.id===v.serviceRegionId)?.regionId||"")).map(v=>({ ...v,area:s.areas.find(area=>area.id===v.serviceRegionId)?.name,owner:s.owners.find(o=>o.id===v.ownerId)?.name,availability:s.availability.find(r=>r.vehicleId===v.id),activeReservations:s.reservations.filter(r=>r.vehicleId===v.id && !["released","cancelled"].includes(r.status)).length })); }); res.json(envelope(value)); }));
   app.get("/api/admin/vehicle-applications", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
-    res.json(envelope(await store.read(s=>{const scope=visibleRegions(s,a);return s.vehicleApplications.filter(x=>scope.has(s.areas.find(area=>area.id===x.areaId)?.regionId||"")).map(x=>({...x,area:s.areas.find(v=>v.id===x.areaId)?.name,owner:s.owners.find(v=>v.id===x.ownerId)?.name,model:s.models.find(v=>v.id===x.modelId)?.name}));})));
+    res.json(envelope(await store.read(s=>{const scope=regionViewScope(s,a,String(req.query.regionId||""));return s.vehicleApplications.filter(x=>scope.has(s.areas.find(area=>area.id===x.areaId)?.regionId||"")).map(x=>({...x,area:s.areas.find(v=>v.id===x.areaId)?.name,owner:s.owners.find(v=>v.id===x.ownerId)?.name,model:s.models.find(v=>v.id===x.modelId)?.name}));})));
   }));
   app.post("/api/admin/vehicle-applications/:id/review", asyncRoute(async (req,res) => {
     const a=await admin(req,config,store);
@@ -329,7 +434,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const secret=process.env.SESSION_SECRET;
   const adminPassword=process.env.ADMIN_BOOTSTRAP_PASSWORD;
   if (!secret || secret.length<32 || !adminPassword || adminPassword.length<12) throw new Error("请设置 SESSION_SECRET（至少32字符）与 ADMIN_BOOTSTRAP_PASSWORD（至少12字符）");
-  const config:Config={ secret,appId:process.env.WECHAT_APP_ID,appSecret:process.env.WECHAT_APP_SECRET,demoAuth:process.env.ALLOW_DEMO_AUTH==="true",production:process.env.NODE_ENV==="production" };
+  const config:Config={ secret,appId:process.env.WECHAT_APP_ID,appSecret:process.env.WECHAT_APP_SECRET,mapsKey:process.env.TENCENT_MAPS_KEY,demoAuth:process.env.ALLOW_DEMO_AUTH==="true",production:process.env.NODE_ENV==="production" };
   if (config.production && !process.env.DATABASE_URL) throw new Error("生产环境必须配置 DATABASE_URL，避免订单在服务重启后丢失");
   const store=new StateStore(seedState(adminPassword,config.demoAuth&&!config.production),process.env.DATABASE_URL);
   store.init().then(()=>{

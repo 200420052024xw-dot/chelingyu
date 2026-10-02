@@ -37,6 +37,7 @@ interface PageData {
   modelVolume: string;
   modelBattery: string;
   scheduledLabel: string;
+  routeDistanceLabel: string;
 }
 
 Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
@@ -61,6 +62,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
     modelVolume: "",
     modelBattery: "",
     scheduledLabel: "",
+    routeDistanceLabel: "",
   },
 
   onLoad(query) {
@@ -138,6 +140,7 @@ Page<PageData, any>(withPagePerformance<PageData, any>("delivery/confirm", {
       modelVolume: model ? (model.cargoVolumeLiters >= 1000 ? `${(model.cargoVolumeLiters / 1000).toFixed(1)} m³` : `${model.cargoVolumeLiters} L`) : "",
       modelBattery: quote.vehicleId ? `${repo.getVehicle(quote.vehicleId)?.batteryPercent ?? 0}%` : "—",
       scheduledLabel: draft.scheduledPickupAt ? formatDateTime(draft.scheduledPickupAt) : "",
+      routeDistanceLabel:quote.routeDistanceMeters>0?`${(quote.routeDistanceMeters/1000).toFixed(1)} 公里${quote.routeDistanceSource==="tencent"?" · 地图路线":""}`:"",
     });
   },
 

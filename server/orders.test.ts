@@ -3,7 +3,7 @@ import { test } from "node:test";
 import type { DeliveryAddressSnapshot, OrderDraft, Quote } from "../miniprogram/contracts/types";
 import { computeInputFingerprint } from "../miniprogram/domain/pricing";
 import { acceptQuote, createOrder, customerConfirm, dispatch, eligibleVehicles, payMock, progress, review } from "./orders";
-import { canOperateOrder, canSeeOrder, priceFor, seedState } from "./state";
+import { canOperateOrder, canSeeOrder, orderInRegionView, priceFor, regionViewScope, seedState } from "./state";
 
 const password="a-strong-test-password";
 const address=(name:string,latitude:number,longitude:number):DeliveryAddressSnapshot=>({name,detail:`${name}测试地址`,contactName:"测试联系人",contactMobile:"13800000000",regionCode:"360100",location:{latitude,longitude}});
@@ -14,7 +14,7 @@ function input(options:{scheduled?:boolean;modelId?:string;sender?:DeliveryAddre
   const scheduledAt=new Date(Date.now()+20*60_000).toISOString();
   const draft:OrderDraft={id:"draft-test",userId:"old-device-user",revision:1,sender,receiver,serviceTimeMode:options.scheduled?"scheduled":"immediate",scheduledPickupAt:options.scheduled?scheduledAt:undefined,cargo:{category:"general",description:"测试货物",quantity:1,unitWeightGrams:1000,fragile:false,needsHandling:false},selectedVehicleModelId:modelId,dispatchSource:options.scheduled?"headquarters":"nearby",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
   const state=seedState(password);
-  const pricing=priceFor(sender,receiver,draft.cargo!,state.models.find(m=>m.id===modelId)!);
+  const pricing=priceFor(sender,receiver,draft.cargo!,state.models.find(m=>m.id===modelId)!,undefined,5000);
   const quote:Quote={id:`quote-${options.requestId||"one"}`,orderDraftId:draft.id,draftRevision:1,inputFingerprint:computeInputFingerprint(draft,modelId),customerId:draft.userId,vehicleModelId:modelId,pricingPolicyId:"pricing_qh",pricingPolicyVersion:1,routeDistanceMeters:5000,estimatedArrivalMinutes:5,items:pricing.items,totalAmountFen:pricing.total,expiresAt:new Date(Date.now()+5*60000).toISOString(),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
   return {draft,quote,requestId:options.requestId||"one"};
 }
@@ -31,6 +31,7 @@ test("cross-district order belongs to pickup district; destination is read-only"
   assert.equal(canOperateOrder(state,pickup,order),true);
   assert.equal(canSeeOrder(state,destination,order),true);
   assert.equal(canOperateOrder(state,destination,order),false);
+  assert.equal(orderInRegionView(state,destination,regionViewScope(state,destination,"donghu"),order),true);
   assert.equal(canSeeOrder(state,city,order),true);
 });
 
@@ -83,4 +84,17 @@ test("order creation rejects a changed price or stale draft fingerprint",()=>{
   const stale=input({requestId:"stale"});stale.draft.sender!.location.longitude+=0.01;
   assert.throws(()=>createOrder(state,"demo-user",stale),/报价已过期/);
   assert.equal(state.orders.length,0);
+});
+
+test("mock payment checks citywide vehicle capacity before charging",()=>{
+  const state=seedState(password);
+  const order=createOrder(state,"demo-user",input({requestId:"capacity-check"}));
+  for(const vehicle of state.vehicles) vehicle.ownerShared=false;
+  assert.throws(()=>payMock(state,"demo-user",order.id,"pay-capacity","success"),/尚未扣款/);
+  assert.equal(order.status,"pending_payment");
+  assert.equal(state.payments.length,0);
+  state.vehicles.find(vehicle=>vehicle.id==="cly-003")!.ownerShared=true;
+  const result=payMock(state,"demo-user",order.id,"pay-capacity","success");
+  assert.equal(result.payment?.status,"succeeded");
+  assert.equal(order.assignedVehicleId,"cly-003");
 });

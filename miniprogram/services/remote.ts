@@ -62,6 +62,10 @@ async function request<T>(path: string, method: RequestMethod = "GET", data?: un
   }
 }
 export interface SharedOrderRow extends DeliveryOrder { pickupRegion?: string; destinationRegion?: string; }
+export interface CooperationContactView { regionId:string;teamName:string;phone?:string;wechat?:string;email?:string;sourceRegionId:string;sourceRegionName:string }
+export const sharedCooperation = {
+  contact(adcode = "") { return send<CooperationContactView|null>(`/cooperation-contact?adcode=${encodeURIComponent(adcode)}`,"GET"); },
+};
 export const sharedOrders = {
   create(draft: OrderDraft, quote: Quote, requestId: string) { return request<DeliveryOrder>("/orders", "POST", { draft, quote, requestId }); },
   list(status: string = "all") { return request<SharedOrderRow[]>(`/orders?status=${encodeURIComponent(status)}`); },

@@ -96,7 +96,8 @@
     <view class="time-row press-scale {{draft.serviceTimeMode === 'scheduled' ? 'scheduled' : ''}}" hover-class="time-row-hover">
       <text class="time-mode">{{draft.serviceTimeMode === 'immediate' ? '立即用车' : '预约用车 · ' + scheduledLabel}}</text>
       <text wx:if="{{draft.dispatchSource === 'headquarters' || draft.dispatchSource === 'platform'}}" class="time-estimate">需平台调度确认</text>
-      <text wx:else class="time-estimate">预计 <text class="text-primary">{{quote.estimatedArrivalMinutes}}</text> 分钟内到达</text>
+      <text wx:elif="{{quote.estimatedArrivalMinutes > 0}}" class="time-estimate">预计 <text class="text-primary">{{quote.estimatedArrivalMinutes}}</text> 分钟内到达</text>
+      <text wx:else class="time-estimate">到车时间待派车后确认</text>
       <view class="address-arrow">›</view>
     </view>
   </view>
@@ -106,28 +107,33 @@
     <view class="card-header">
       <view class="card-title">
         <image class="title-icon" src="/assets/icons/tabler/file-text.svg" mode="aspectFit"></image>
-        <text>费用明细</text>
+        <text>{{quote.routeReviewRequired ? '路线待核实' : '费用明细'}}</text>
       </view>
     </view>
+    <view class="fee-row" wx:if="{{quote.routeReviewRequired}}"><text class="fee-label">地图暂未规划出路线，取货区核实后会提供计费里程与报价。核实前无需付款。</text></view>
+    <block wx:else>
     <view class="fee-row" wx:for="{{quote.items}}" wx:key="type">
       <text class="fee-label">{{item.label}}</text>
       <text class="fee-val">{{fmt.money(item.amountFen)}}</text>
     </view>
+    <view class="fee-row" wx:if="{{quote.routeDistanceMeters > 0}}"><text class="fee-label">路线计费里程</text><text class="fee-val">{{routeDistanceLabel}}</text></view>
     <view class="divider"></view>
     <view class="total-row">
       <text>预计费用</text>
       <text class="total-val">{{fmt.money(quote.totalAmountFen)}}</text>
     </view>
+    </block>
   </view>
 
   <view class="bottom-action">
     <view class="pay-bar">
       <view class="pay-info">
-        <view class="pay-label">预计费用</view>
-        <view class="pay-price">{{fmt.money(quote.totalAmountFen)}}</view>
+        <view class="pay-label">{{quote.routeReviewRequired ? '路线待核实' : '预计费用'}}</view>
+        <view class="pay-price" wx:if="{{!quote.routeReviewRequired}}">{{fmt.money(quote.totalAmountFen)}}</view>
       </view>
       <button class="btn-primary pay-btn" bindtap="onSubmitOrder" disabled="{{submitting}}">
         <text wx:if="{{submitting}}">提交中…</text>
+        <text wx:elif="{{quote.routeReviewRequired}}">提交取货区核实</text>
         <text wx:else>{{draft.dispatchSource === 'headquarters' || draft.dispatchSource === 'platform' ? '提交平台调度确认' : '确认下单并支付'}}</text>
       </button>
     </view>

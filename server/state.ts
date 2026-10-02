@@ -1,11 +1,14 @@
 import { randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import pg from "pg";
-import type { CargoInfo, DeliveryAddressSnapshot, DeliveryOrder, OrderStatus, OrderStatusEvent, Payment, Refund, Vehicle, VehicleAvailabilityRule, VehicleModel, VehicleReservation } from "../miniprogram/contracts/types";
+import type { CargoInfo, DeliveryAddressSnapshot, DeliveryOrder, OrderStatus, OrderStatusEvent, Payment, Quote, Refund, Vehicle, VehicleAvailabilityRule, VehicleModel, VehicleReservation } from "../miniprogram/contracts/types";
 import { VEHICLE_CATALOG } from "../miniprogram/content/vehicle-products";
 
 export type AdminLevel = "headquarters" | "province" | "city" | "district";
 export interface AdminAccount { id: string; username: string; passwordHash: string; level: AdminLevel; regionId?: string; name: string; }
-export interface RegionNode { id: string; name: string; level: "province" | "city" | "district"; parentId?: string; cityId?: string; }
+export interface RegionNode { id: string; name: string; level: "province" | "city" | "district"; parentId?: string; cityId?: string; adcode?: string; enabled?: boolean; }
+export interface RegionChange { id: string; regionId: string; actorId: string; actorName: string; action: "created" | "adcode_updated"; beforeAdcode?: string; afterAdcode?: string; at: string; }
+export interface CooperationContact { regionId: string; teamName: string; phone?: string; wechat?: string; email?: string; updatedAt: string; updatedBy: string; }
+export interface ContactChange { id: string; regionId: string; actorId: string; actorName: string; before?: CooperationContact; after: CooperationContact; at: string; }
 export interface Area { id: string; name: string; regionId: string; cityId: string; center: { latitude: number; longitude: number }; radiusMeters: number; }
 export interface OwnerRecord { id: string; userId: string; name: string; }
 export interface AuditRecord { id: string; orderId: string; actorId: string; actorName: string; action: string; note: string; at: string; }
@@ -19,12 +22,16 @@ export interface SharedState {
   users: Array<{ id: string; openId: string; nickname: string }>;
   admins: AdminAccount[];
   regions: RegionNode[];
+  regionHistory: RegionChange[];
+  cooperationContacts: Record<string, CooperationContact>;
+  contactHistory: ContactChange[];
   areas: Area[];
   owners: OwnerRecord[];
   models: VehicleModel[];
   vehicles: Vehicle[];
   availability: VehicleAvailabilityRule[];
   reservations: VehicleReservation[];
+  quotes: Quote[];
   orders: DeliveryOrder[];
   events: OrderStatusEvent[];
   payments: Payment[];
@@ -92,7 +99,7 @@ export function seedState(adminPassword: string, includeDemoAdmins = true): Shar
       { id: "admin_dh", username: "donghu", passwordHash: hashPassword(adminPassword), level: "district", regionId: "donghu", name: "东湖区运营" },
       ] as AdminAccount[] : []),
     ],
-    regions, areas, owners: [{ id: "owner_demo", userId: "demo-user", name: "演示车主" }, { id: "owner_donghu", userId: "demo-donghu", name: "东湖车主" }],
+    regions, regionHistory: [], cooperationContacts: {}, contactHistory: [], areas, owners: [{ id: "owner_demo", userId: "demo-user", name: "演示车主" }, { id: "owner_donghu", userId: "demo-donghu", name: "东湖车主" }],
     models: VEHICLE_CATALOG.map(item => ({
       id:item.id,code:item.code,name:item.name,category:item.category,imageUrl:item.image,
       description:item.description,maxLoadGrams:item.loadKg*1000,cargoVolumeLiters:item.volumeLiters,
@@ -100,11 +107,15 @@ export function seedState(adminPassword: string, includeDemoAdmins = true): Shar
       supportedCargoCategories:item.cold?["general","document","fresh_cold_chain","food","medical","other"] as VehicleModel["supportedCargoCategories"]:["general","document","food","medical","other"] as VehicleModel["supportedCargoCategories"],
       enabled:true,createdAt:stamp,updatedAt:stamp,
     })),
-    vehicles, availability, reservations: [], orders: [], events: [], payments: [], refunds: [], audit: [], notices: [], pricing, pricingHistory: [], vehicleApplications: [], requests: {},
+    vehicles, availability, reservations: [], quotes: [], orders: [], events: [], payments: [], refunds: [], audit: [], notices: [], pricing, pricingHistory: [], vehicleApplications: [], requests: {},
   };
 }
 
 function normalize(state: SharedState, defaults: SharedState) {
+  state.regionHistory ||= [];
+  state.quotes ||= [];
+  state.cooperationContacts ||= {};
+  state.contactHistory ||= [];
   state.pricing ||= structuredClone(defaults.pricing);
   for (const [regionId, policy] of Object.entries(defaults.pricing)) state.pricing[regionId] ||= structuredClone(policy);
   state.pricingHistory ||= [];
@@ -166,7 +177,7 @@ export function distanceMeters(a: { latitude: number; longitude: number }, b: { 
 export function areaFor(state: SharedState, address: DeliveryAddressSnapshot): Area {
   const point = address?.location;
   if (!point || !Number.isFinite(point.latitude) || !Number.isFinite(point.longitude)) fail(400, "VALIDATION_ERROR", "地址缺少有效坐标");
-  const area = state.areas.filter(a => distanceMeters(a.center, point) <= a.radiusMeters).sort((a,b) => distanceMeters(a.center,point)-distanceMeters(b.center,point))[0];
+  const area = state.areas.filter(a => state.regions.find(r => r.id === a.regionId)?.enabled !== false && distanceMeters(a.center, point) <= a.radiusMeters).sort((a,b) => distanceMeters(a.center,point)-distanceMeters(b.center,point))[0];
   return area || fail(400, "OUT_OF_SERVICE", "地址不在当前服务区内");
 }
 export function visibleRegions(state: SharedState, admin: AdminAccount): Set<string> {
@@ -176,11 +187,42 @@ export function visibleRegions(state: SharedState, admin: AdminAccount): Set<str
   while (added) { added = false; for (const r of state.regions) if (r.parentId && result.has(r.parentId) && !result.has(r.id)) { result.add(r.id); added = true; } }
   return result;
 }
+/** The selected view narrows visibility; it never grants permissions outside the account's region. */
+export function regionViewScope(state: SharedState, admin: AdminAccount, selectedRegionId?: string): Set<string> {
+  const allowed = visibleRegions(state, admin);
+  const selected = selectedRegionId || admin.regionId;
+  if (!selected) return allowed;
+  if (!allowed.has(selected)) fail(403, "FORBIDDEN", "无权查看该区域");
+  const descendants = visibleRegions(state, { ...admin, level: "province", regionId: selected });
+  return new Set([...descendants].filter(regionId => allowed.has(regionId)));
+}
+export function regionForAdcode(state: SharedState, adcode: string): RegionNode | undefined {
+  if (!/^\d{6}$/.test(adcode)) return undefined;
+  return state.regions.find(region=>region.level==="district"&&region.adcode===adcode)
+    || state.regions.find(region=>region.level==="city"&&region.adcode?.slice(0,4)===adcode.slice(0,4))
+    || state.regions.find(region=>region.level==="province"&&region.adcode?.slice(0,2)===adcode.slice(0,2));
+}
+export function effectiveCooperationContact(state: SharedState, regionId?: string) {
+  let current=regionId;
+  while(current){
+    const contact=state.cooperationContacts[current];
+    if(contact) return { ...contact, sourceRegionId:current, sourceRegionName:state.regions.find(region=>region.id===current)?.name||"平台总部" };
+    current=state.regions.find(region=>region.id===current)?.parentId;
+  }
+  const headquarters=state.cooperationContacts.platform;
+  return headquarters?{...headquarters,sourceRegionId:"platform",sourceRegionName:"平台总部"}:null;
+}
 export function canSeeOrder(state: SharedState, admin: AdminAccount, order: DeliveryOrder): boolean {
   const scope = visibleRegions(state, admin);
   const pickup = state.areas.find(a => a.id === order.serviceRegionId);
   const destination = order.receiver ? areaFor(state, order.receiver) : undefined;
   return !!pickup && (scope.has(pickup.regionId) || (admin.level === "district" && destination?.regionId === admin.regionId));
+}
+export function orderInRegionView(state: SharedState, admin: AdminAccount, scope: Set<string>, order: DeliveryOrder): boolean {
+  const pickup=state.areas.find(area=>area.id===order.serviceRegionId);
+  if(pickup&&scope.has(pickup.regionId)) return true;
+  const destination=state.areas.find(area=>area.id===order.destinationServiceRegionId);
+  return admin.level==="district"&&!!destination&&destination.regionId===admin.regionId&&scope.has(admin.regionId);
 }
 export function canOperateOrder(state: SharedState, admin: AdminAccount, order: DeliveryOrder): boolean {
   const pickup = state.areas.find(a => a.id === order.serviceRegionId);
@@ -201,8 +243,8 @@ export function notify(state: SharedState, order: DeliveryOrder, title: string) 
   if (area) state.notices.push({ id: id("notice"), audienceRegionId: area.regionId, orderId: order.id, title, readBy: [], at: now() });
 }
 export function getOrder(state: SharedState, orderId: string) { return state.orders.find(o => o.id === orderId) || fail(404, "NOT_FOUND", "订单不存在"); }
-export function priceFor(sender: DeliveryAddressSnapshot, receiver: DeliveryAddressSnapshot, cargo: CargoInfo, model: VehicleModel, rates: Record<PriceKey, number> = { baseFeeFen: 500, distanceFeeFenPerKm: 200, coldChainFeeFen: 100 }) {
-  const distance = distanceMeters(sender.location, receiver.location);
+export function priceFor(sender: DeliveryAddressSnapshot, receiver: DeliveryAddressSnapshot, cargo: CargoInfo, model: VehicleModel, rates: Record<PriceKey, number> = { baseFeeFen: 500, distanceFeeFenPerKm: 200, coldChainFeeFen: 100 }, routeDistanceMeters?: number) {
+  const distance = routeDistanceMeters === undefined ? distanceMeters(sender.location, receiver.location) : routeDistanceMeters;
   const items: DeliveryOrder["priceItems"] = [{ type: "base_fee", label: "基础运费", amountFen: rates.baseFeeFen }];
   if (distance > 0) items.push({ type: "distance_fee", label: `里程费（约 ${(distance/1000).toFixed(1)}km）`, amountFen: Math.ceil(distance / 1000) * rates.distanceFeeFenPerKm });
   if (cargo.category === "fresh_cold_chain" && model.supportsColdChain) items.push({ type: "cargo_fee", label: "冷链温控", amountFen: rates.coldChainFeeFen });

@@ -78,6 +78,7 @@
     <button class="use-btn" bindtap="onStartOrder" loading="{{openingOrder}}" disabled="{{openingOrder}}" hover-class="button-pressed">
       <image class="use-icon" src="/assets/icons/home-capacity-white.png" mode="aspectFit"></image><text>{{openingOrder ? '正在进入' : '我要用车'}}</text><text class="use-arrow">→</text>
     </button>
+    <view class="cooperation-link" wx:if="{{cooperationAvailable}}" bindtap="onOpenCooperation">多辆车或长期使用？<text>长期合作 →</text></view>
     <view class="brand-row">
       <view class="brand-line"></view>
       <text class="brand-text">配送 / 跑腿 / 无人配送</text>
@@ -96,5 +97,15 @@
       <view class="contact-dismiss" bindtap="onCloseSupportContact">关闭</view>
       <view class="contact-ticket" bindtap="onOpenSupportTickets">提交工单</view>
     </view>
+  </view>
+  <view class="support-contact-mask" wx:if="{{cooperationContactOpen}}" bindtap="onCloseCooperation"></view>
+  <view class="support-contact-card" wx:if="{{cooperationContactOpen}}">
+    <view class="contact-eyebrow">长期合作 · {{cooperationContact.sourceRegionName}}</view>
+    <view class="contact-title">联系 {{cooperationContact.teamName}}</view>
+    <view class="contact-note">多车或长期用车需求，请直接联系当前区域的接洽团队。</view>
+    <view class="contact-detail" wx:if="{{cooperationContact.phone}}"><text>联系电话</text><text class="contact-value">{{cooperationContact.phone}}</text></view>
+    <view class="contact-detail" wx:if="{{cooperationContact.wechat}}"><text>微信号</text><text class="contact-value">{{cooperationContact.wechat}}</text></view>
+    <view class="contact-detail" wx:if="{{cooperationContact.email}}"><text>电子邮箱</text><text class="contact-value">{{cooperationContact.email}}</text></view>
+    <view class="contact-actions"><view class="contact-dismiss" bindtap="onCloseCooperation">关闭</view></view>
   </view>
 </view>

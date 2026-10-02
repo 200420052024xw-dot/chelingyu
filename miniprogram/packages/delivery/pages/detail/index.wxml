@@ -97,9 +97,16 @@
       </view>
     </view>
 
+    <view class="card" wx:if="{{view.order.routeReviewRequired && view.order.status === 'pending_dispatch_review'}}">
+      <view class="section-title">取货区正在核实路线</view>
+      <view class="route-note">地图未规划出路线。核实结果、计费里程和报价确认前，无需付款。</view>
+    </view>
+
     <view class="card" wx:if="{{view.order.status === 'pending_customer_quote'}}">
-      <view class="section-title">平台建议更换车型</view>
+      <view class="section-title">{{view.order.routeReviewEvidence ? '路线已核实，请确认报价' : '平台建议更换车型'}}</view>
       <view class="quote-change">新车型：{{view.order.proposedVehicleModelId}}</view>
+      <view class="quote-change" wx:if="{{view.order.proposedRouteDistanceMeters}}">计费里程：{{view.order.proposedRouteDistanceMeters / 1000}} 公里（区级人工核实）</view>
+      <view class="quote-change" wx:if="{{view.order.routeReviewEvidence}}">核实依据：{{view.order.routeReviewEvidence}}</view>
       <view class="quote-change">新报价：{{fmt.money(view.order.proposedTotalAmountFen)}}</view>
       <view class="route-note">确认新报价后才会进入支付环节。</view>
     </view>

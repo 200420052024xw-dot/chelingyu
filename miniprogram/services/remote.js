@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sharedFleet = exports.sharedVehicleApplications = exports.sharedPricing = exports.sharedOrders = exports.isSharedMode = void 0;
+exports.sharedFleet = exports.sharedVehicleApplications = exports.sharedPricing = exports.sharedOrders = exports.sharedCooperation = exports.isSharedMode = void 0;
 const env_1 = require("../config/env");
 const index_1 = require("../repositories/index");
 const tokenKey = "cly:shared:customer-token";
@@ -75,6 +75,9 @@ async function request(path, method = "GET", data) {
         return send(path, method, data, await authenticate(true));
     }
 }
+exports.sharedCooperation = {
+    contact(adcode = "") { return send(`/cooperation-contact?adcode=${encodeURIComponent(adcode)}`, "GET"); },
+};
 exports.sharedOrders = {
     create(draft, quote, requestId) { return request("/orders", "POST", { draft, quote, requestId }); },
     list(status = "all") { return request(`/orders?status=${encodeURIComponent(status)}`); },

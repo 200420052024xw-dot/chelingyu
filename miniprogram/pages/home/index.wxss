@@ -697,6 +697,7 @@
 .use-icon { width: 38rpx; height: 38rpx; }
 .bottom-card .brand-row { flex: 0 0 auto; margin-top: 12rpx; }
 .bottom-card .brand-text { color: #84909b; font-size: 20rpx; }
+.cooperation-link{flex:0 0 auto;text-align:center;color:#6c8375;font-size:23rpx;padding:10rpx 0 0}.cooperation-link text{color:#079e69;font-weight:700}
 
 .support-contact-mask {
   position: fixed;

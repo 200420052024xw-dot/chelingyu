@@ -37,6 +37,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
         modelVolume: "",
         modelBattery: "",
         scheduledLabel: "",
+        routeDistanceLabel: "",
     },
     onLoad(query) {
         this._unloaded = false;
@@ -117,6 +118,7 @@ Page((0, page_performance_1.withPagePerformance)("delivery/confirm", {
             modelVolume: model ? (model.cargoVolumeLiters >= 1000 ? `${(model.cargoVolumeLiters / 1000).toFixed(1)} m³` : `${model.cargoVolumeLiters} L`) : "",
             modelBattery: quote.vehicleId ? `${(_g = (_f = index_1.repo.getVehicle(quote.vehicleId)) === null || _f === void 0 ? void 0 : _f.batteryPercent) !== null && _g !== void 0 ? _g : 0}%` : "—",
             scheduledLabel: draft.scheduledPickupAt ? (0, clock_1.formatDateTime)(draft.scheduledPickupAt) : "",
+            routeDistanceLabel: quote.routeDistanceMeters > 0 ? `${(quote.routeDistanceMeters / 1000).toFixed(1)} 公里${quote.routeDistanceSource === "tencent" ? " · 地图路线" : ""}` : "",
         });
     },
     onEditAddress() {

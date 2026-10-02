@@ -95,30 +95,35 @@ export function createOrder(state: SharedState, userId: string, input: CreateInp
   if (pickup.cityId !== destination.cityId) fail(400, "OUT_OF_SERVICE", "目前仅支持同城跨区配送");
   const model = state.models.find(m => m.id === draft.selectedVehicleModelId) || fail(404, "NOT_FOUND", "车型不存在");
   if (draft.serviceTimeMode === "scheduled" && (!draft.scheduledPickupAt || Date.parse(draft.scheduledPickupAt) <= Date.now())) fail(400, "VALIDATION_ERROR", "预约时间需晚于当前时间");
-  const pricing = quoteFor(state, sender, receiver, cargo, model);
+  const pricing = quoteFor(state, sender, receiver, cargo, model, quote.routeDistanceMeters>0||quote.routeDistanceSource==="tencent"?quote.routeDistanceMeters:undefined);
   if (quote.pricingPolicyVersion !== pricing.policyVersion) fail(409, "QUOTE_CHANGED", "价格规则已更新，请重新确认报价");
-  if (quote.totalAmountFen !== pricing.total || JSON.stringify(quote.items) !== JSON.stringify(pricing.items)) fail(409,"QUOTE_CHANGED","订单价格已变更，请重新选择车型并确认报价");
-  const manual = draft.serviceTimeMode === "scheduled" || draft.dispatchSource === "headquarters" || draft.dispatchSource === "platform" || !compatible(model, cargo);
+  if (quote.routeReviewRequired) {
+    if (quote.totalAmountFen!==0||quote.items.length!==0) fail(409,"QUOTE_CHANGED","路线待核实需求不得预先收费");
+  } else if (quote.totalAmountFen !== pricing.total || JSON.stringify(quote.items) !== JSON.stringify(pricing.items)) fail(409,"QUOTE_CHANGED","订单价格已变更，请重新选择车型并确认报价");
+  const manual = !!quote.routeReviewRequired || draft.serviceTimeMode === "scheduled" || draft.dispatchSource === "headquarters" || draft.dispatchSource === "platform" || !compatible(model, cargo);
   const timestamp = now();
   const order: DeliveryOrder = {
     id: id("order"), orderNo: `CLY${Date.now()}${Math.floor(Math.random()*900+100)}`, type: "task_delivery", customerId: userId,
     serviceRegionId: pickup.id, destinationServiceRegionId: destination.id, sender, receiver,
     cargo, serviceTimeMode: draft.serviceTimeMode, scheduledPickupAt: draft.scheduledPickupAt,
     vehicleSnapshot: { vehicleModelId: model.id, modelName: model.name, imageUrl: model.imageUrl, maxLoadGrams: model.maxLoadGrams, cargoVolumeLiters: model.cargoVolumeLiters },
-    acceptedQuoteId: quote.id, priceItems: pricing.items, totalAmountFen: pricing.total, pricingPolicyId: pricing.policyId, pricingPolicyVersion: pricing.policyVersion,
+    acceptedQuoteId: quote.id, priceItems:quote.routeReviewRequired?[]:pricing.items, totalAmountFen:quote.routeReviewRequired?0:pricing.total, pricingPolicyId: pricing.policyId, pricingPolicyVersion: pricing.policyVersion,
+    routeDistanceMeters:quote.routeDistanceSource==="tencent"?quote.routeDistanceMeters:quote.routeDistanceMeters||undefined,routeDistanceSource:quote.routeReviewRequired?undefined:quote.routeDistanceSource||"demo",
+    routeReviewRequired:quote.routeReviewRequired||undefined,
     status: manual ? "pending_dispatch_review" : "pending_payment", dispatchSource: manual ? "platform" : "nearby", version: 1, createdAt: timestamp, updatedAt: timestamp,
   };
   state.orders.push(order);
   state.events.push({ id: id("event"), orderId: order.id, toStatus: order.status, actorType: "customer", actorId: userId, occurredAt: timestamp, note: "用户提交订单", createdAt: timestamp, updatedAt: timestamp });
   state.requests[requestKey] = order.id;
-  if (manual) notify(state, order, "新订单待调度确认");
+  if (manual) notify(state, order, quote.routeReviewRequired?"新需求待核实路线":"新订单待调度确认");
   return order;
 }
-export function review(state: SharedState, admin: AdminAccount, orderId: string, decision: "approved" | "rejected", reason = "", replacementModelId?: string) {
+export function review(state: SharedState, admin: AdminAccount, orderId: string, decision: "approved" | "rejected", reason = "", replacementModelId?: string, manualDistanceMeters?: number, routeEvidence = "") {
   const order = getOrder(state, orderId);
   if (!canOperateOrder(state, admin, order)) fail(403, "FORBIDDEN", "无权处理该区域订单");
   requireInterventionReason(state,admin,order,reason);
   if (order.status !== "pending_dispatch_review") fail(409, "INVALID_TRANSITION", "当前订单无需审核");
+  if(order.routeReviewRequired && (admin.level!=="district"||state.areas.find(area=>area.id===order.serviceRegionId)?.regionId!==admin.regionId)) fail(403,"FORBIDDEN","路线人工核实必须由取货区处理");
   if (decision === "rejected") {
     if (!reason.trim()) fail(400, "VALIDATION_ERROR", "请填写拒绝原因");
     order.dispatchReviewReason = reason.trim();
@@ -129,9 +134,23 @@ export function review(state: SharedState, admin: AdminAccount, orderId: string,
   }
   const model = state.models.find(m => m.id === (replacementModelId || order.vehicleSnapshot.vehicleModelId)) || fail(404, "NOT_FOUND", "车型不存在");
   if (!compatible(model, order.cargo)) fail(400, "INCOMPATIBLE_MODEL", "车型无法承运该货物，请更换车型或拒绝");
+  if(order.routeReviewRequired){
+    if(!Number.isInteger(manualDistanceMeters)||!manualDistanceMeters||manualDistanceMeters<=0||manualDistanceMeters>1_000_000||!routeEvidence.trim()||routeEvidence.trim().length>500||!reason.trim()||reason.trim().length>500) fail(400,"VALIDATION_ERROR","请填写有效的审核理由、计费路线里程和通行依据（说明不超过500字）");
+    const pricing=quoteFor(state,order.sender,order.receiver,order.cargo,model,manualDistanceMeters);
+    order.dispatchConfirmed=true;order.dispatchReviewerId=admin.id;order.dispatchReviewedAt=now();order.dispatchReviewReason=reason.trim();
+    order.pricingPolicyId=pricing.policyId;order.pricingPolicyVersion=pricing.policyVersion;
+    order.proposedVehicleModelId=model.id;
+    order.proposedPriceItems=pricing.items;order.proposedTotalAmountFen=pricing.total;
+    order.proposedRouteDistanceMeters=manualDistanceMeters;order.routeReviewEvidence=routeEvidence.trim();
+    addEvent(state,order,"pending_customer_quote","operator",admin.id,"路线已人工核实，等待客户确认计费里程与新报价");
+    audit(state,order,admin,"route_approved",`${reason.trim()}；计费里程 ${manualDistanceMeters} 米；依据：${routeEvidence.trim()}`);
+    notify(state,order,"路线已核实，请确认报价后支付");
+    return order;
+  }
   order.dispatchConfirmed = true; order.dispatchReviewerId = admin.id; order.dispatchReviewedAt = now(); order.dispatchReviewReason = reason.trim() || undefined;
   if (model.id !== order.vehicleSnapshot.vehicleModelId) {
-    const pricing = quoteFor(state, order.sender, order.receiver, order.cargo, model);
+    const pricing = quoteFor(state, order.sender, order.receiver, order.cargo, model, order.routeDistanceMeters);
+    order.pricingPolicyId=pricing.policyId;order.pricingPolicyVersion=pricing.policyVersion;
     order.proposedVehicleModelId = model.id; order.proposedPriceItems = pricing.items; order.proposedTotalAmountFen = pricing.total;
     addEvent(state, order, "pending_customer_quote", "operator", admin.id, "建议更换车型，等待客户确认新报价");
   } else addEvent(state, order, "pending_payment", "operator", admin.id, "平台调度确认通过");
@@ -146,6 +165,7 @@ export function acceptQuote(state: SharedState, userId: string, orderId: string)
   const model = state.models.find(m => m.id === order.proposedVehicleModelId) || fail(404, "NOT_FOUND", "车型不存在");
   order.vehicleSnapshot = { vehicleModelId: model.id, modelName: model.name, imageUrl: model.imageUrl, maxLoadGrams: model.maxLoadGrams, cargoVolumeLiters: model.cargoVolumeLiters };
   order.priceItems = order.proposedPriceItems!; order.totalAmountFen = order.proposedTotalAmountFen!;
+  if(order.proposedRouteDistanceMeters!==undefined){order.routeDistanceMeters=order.proposedRouteDistanceMeters;order.routeDistanceSource="manual";order.routeReviewRequired=false;order.proposedRouteDistanceMeters=undefined;}
   order.proposedVehicleModelId = undefined; order.proposedPriceItems = undefined; order.proposedTotalAmountFen = undefined;
   addEvent(state, order, "pending_payment", "customer", userId, "客户接受新报价");
   return order;
@@ -159,6 +179,7 @@ export function payMock(state: SharedState, userId: string, orderId: string, req
   if (order.status !== "pending_payment") fail(409, "INVALID_TRANSITION", "当前订单不能支付");
   const key = `${userId}:pay:${requestId}`;
   if (state.requests[key]) return { order, payment: state.payments.find(p => p.id === state.requests[key]) };
+  if (scenario === "success" && eligibleVehicles(state,order).length < 1) fail(409,"NO_CAPACITY","同城暂无符合条件的车辆，请稍后再试，尚未扣款");
   const timestamp = now();
   const payment = { id: id("payment"), paymentNo: id("P"), orderId, payerUserId: userId, channel: "mock" as const, amountFen: order.totalAmountFen, status: scenario === "success" ? "succeeded" as const : "failed" as const, paidAt: scenario === "success" ? timestamp : undefined, createdAt: timestamp, updatedAt: timestamp };
   state.payments.push(payment); state.requests[key] = payment.id;

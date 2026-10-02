@@ -41,9 +41,9 @@ export function savePricing(state: SharedState, admin: AdminAccount, input: { ra
   return next;
 }
 
-export function quoteFor(state: SharedState, sender: DeliveryAddressSnapshot, receiver: DeliveryAddressSnapshot, cargo: CargoInfo, model: VehicleModel) {
+export function quoteFor(state: SharedState, sender: DeliveryAddressSnapshot, receiver: DeliveryAddressSnapshot, cargo: CargoInfo, model: VehicleModel, routeDistanceMeters?: number) {
   const area = areaFor(state, sender);
   const { policy, valid } = pricingStatus(state, area.regionId);
   if (!valid || !policy.values) fail(409, "PRICE_POLICY_INVALID", "当前区域价格待调整，暂不能报价");
-  return { ...priceFor(sender, receiver, cargo, model, policy.values), policyId: `pricing_${area.regionId}`, policyVersion: policy.version };
+  return { ...priceFor(sender, receiver, cargo, model, policy.values, routeDistanceMeters), policyId: `pricing_${area.regionId}`, policyVersion: policy.version };
 }
